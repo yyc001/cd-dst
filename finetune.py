@@ -91,8 +91,8 @@ def get_model(base_model, resume_from_checkpoint):
             lora_alpha=16,
             lora_dropout=0.05,
             r=8,
-            # target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-            target_modules=["q_proj", "v_proj"],
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+            # target_modules=["q_proj", "v_proj"],
             task_type="CAUSAL_LM"
         )
     )
@@ -134,12 +134,8 @@ def train(
         # model/data params
         base_model: str = "NousResearch/Llama-2-7b-chat-hf",  # the only required argument
         data_path: str = "data/MultiWOZ_2.2_preprocess/train.json",
-        output_dir: str = "./output_model",
+        output_dir: str = "./output_model_full",
         schema_path: str = "data/multiwoz/data/MultiWOZ_2.2/schema.json",
-        # training hyperparams
-        learning_rate: float = 3e-4,
-        val_set_size: int = 1000,
-        group_by_length: bool = False,  # faster, but produces an odd training loss curve
         resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
 ):
     # if int(os.environ.get("LOCAL_RANK", 0)) == 0:
@@ -171,33 +167,33 @@ def train(
     tokenizer, tokenize_func = get_tokenizer(base_model)
     data = PreprocessedDataset(
         data_path,
-        sample=0.01,
+        sample=0.001,
         prompter=DefaultPrompter(schema_path),
         tokenize_func=tokenize_func
     )
-    train_data, val_data = torch.utils.data.random_split(data, [len(data)-100, 100])
+    # train_data, val_data = torch.utils.data.random_split(data, [len(data)-100, 100])
     trainer = transformers.Trainer(
         model=model,
-        train_dataset=train_data,
-        eval_dataset=val_data,
+        train_dataset=data,
+        eval_dataset=None,
         args=transformers.TrainingArguments(
             per_device_train_batch_size=2,
-            gradient_accumulation_steps=32,
+            gradient_accumulation_steps=64,
             warmup_steps=100,
             num_train_epochs=2,
-            learning_rate=learning_rate,
+            learning_rate=1e-3,
             fp16=True,
             logging_steps=10,
             optim="adamw_torch",
-            evaluation_strategy="steps",
+            # evaluation_strategy="steps",
             save_strategy="steps",
-            eval_steps=200,
-            save_steps=200,
+            # eval_steps=200,
+            save_steps=10,
             output_dir=output_dir,
             save_total_limit=3,
-            load_best_model_at_end=True,
+            # load_best_model_at_end=True,
             # ddp_find_unused_parameters=False if ddp else None,
-            group_by_length=group_by_length,
+            group_by_length=False,  # faster, but produces an odd training loss curve
         ),
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
@@ -207,6 +203,7 @@ def train(
     trainer.train(
         # resume_from_checkpoint=resume_from_checkpoint
     )
+    # trainer.save_model()
 
     # model.save_pretrained(output_dir)
 

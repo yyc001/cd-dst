@@ -3,6 +3,7 @@ import os
 import sys
 
 import torch
+from peft import PeftModel
 from tqdm import tqdm
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
@@ -14,7 +15,7 @@ def sys_proxy():
     os.environ["https_proxy"] = "http://127.0.0.1:7890"
 
 
-def load_model(base_model, local_files_only=False):
+def load_model(base_model, local_files_only=False, lora_weights=""):
     if not local_files_only:
         sys_proxy()
     model = LlamaForCausalLM.from_pretrained(
@@ -25,6 +26,12 @@ def load_model(base_model, local_files_only=False):
         local_files_only=local_files_only,
         # cache_dir="./"
     )
+    if lora_weights:
+        model = PeftModel.from_pretrained(
+            model,
+            lora_weights,
+            torch_dtype=torch.float16,
+        )
     model.eval()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
@@ -59,12 +66,13 @@ def generation(prompt, tokenizer, model):
 def main(
         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
         base_model="NousResearch/Llama-2-7b-chat-hf",
+        lora_weights="output_model/checkpoint-200",
         # base_model="NousResearch/Llama-2-7b-hf",
         processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
         output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
 ):
     prompter = DefaultPrompter(schema_path)
-    tokenizer, model = load_model(base_model)
+    tokenizer, model = load_model(base_model, lora_weights=lora_weights)
     data = json.load(open(processed_data_path, "r"))
     response_list = []
     aga_num = 0
