@@ -163,23 +163,25 @@ def train(
     #         f"wandb_log_model: {wandb_log_model}\n"
     #         f"resume_from_checkpoint: {resume_from_checkpoint or False}\n"
     #     )
-
+    print("-----model-----")
     model = get_model(base_model, resume_from_checkpoint)
     tokenizer, tokenize_func = get_tokenizer(base_model)
+    print("-----data-----")
     data = PreprocessedDataset(
         data_path,
         # sample=0.0001,
         prompter=DefaultPrompter(schema_path),
         tokenize_func=tokenize_func
     )
+    print("data length:", len(data))
     # train_data, val_data = torch.utils.data.random_split(data, [len(data)-100, 100])
     trainer = transformers.Trainer(
         model=model,
         train_dataset=data,
         eval_dataset=None,
         args=transformers.TrainingArguments(
-            per_device_train_batch_size=32,
-            gradient_accumulation_steps=4,
+            per_device_train_batch_size=16,
+            gradient_accumulation_steps=8,
             warmup_steps=100,
             num_train_epochs=1,
             learning_rate=1e-3,
@@ -200,8 +202,9 @@ def train(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
         ),
     )
-
+    print("-----train-----")
     trainer.train()
+    print("-----save-----")
     # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     trainer.save_model()
 
