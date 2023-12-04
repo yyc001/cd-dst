@@ -24,9 +24,9 @@ def load_model(base_model, local_files_only=False, lora_weights=""):
         torch_dtype=torch.float16,
         device_map="auto",
         local_files_only=local_files_only,
-        # cache_dir="./"
+        cache_dir="./"
     )
-    if lora_weights:
+    if os.path.exists(lora_weights):
         model = PeftModel.from_pretrained(
             model,
             lora_weights,
@@ -38,7 +38,7 @@ def load_model(base_model, local_files_only=False, lora_weights=""):
 
     tokenizer = LlamaTokenizer.from_pretrained(base_model,
                                                local_files_only=local_files_only,
-                                               # cache_dir="./"
+                                               cache_dir="./"
                                                )
     # tokenizer.bos_token_id = 1
     # tokenizer.eos_token_id = 2
