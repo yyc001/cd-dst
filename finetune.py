@@ -178,8 +178,8 @@ def train(
         train_dataset=data,
         eval_dataset=None,
         args=transformers.TrainingArguments(
-            per_device_train_batch_size=4,
-            gradient_accumulation_steps=32,
+            per_device_train_batch_size=8,
+            gradient_accumulation_steps=16,
             warmup_steps=100,
             num_train_epochs=1,
             learning_rate=1e-3,
