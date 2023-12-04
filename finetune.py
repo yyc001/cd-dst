@@ -128,7 +128,8 @@ def get_model(base_model, resume_from_checkpoint):
 
 def train(
         # model/data params
-        base_model: str = "NousResearch/Llama-2-7b-chat-hf",  # the only required argument
+        # base_model: str = "NousResearch/Llama-2-7b-chat-hf",  # the only required argument
+        base_model: str = "daryl149/llama-2-7b-chat-hf",  # the only required argument
         data_path: str = "data/MultiWOZ_2.2_preprocess/train.json",
         output_dir: str = "./output_model_full",
         schema_path: str = "data/multiwoz/data/MultiWOZ_2.2/schema.json",
