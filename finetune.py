@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import sys
 import torch
@@ -40,7 +41,7 @@ class PreprocessedDataset(Dataset):
 
 
 def get_tokenizer(base_model):
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    tokenizer = LlamaTokenizer.from_pretrained(base_model, cache_dir="./")
     tokenizer.bos_token_id = 1
     tokenizer.eos_token_id = 2
     tokenizer.pad_token_id = 0
@@ -73,11 +74,14 @@ def get_tokenizer(base_model):
 
 
 def get_model(base_model, resume_from_checkpoint):
+    os.environ["http_proxy"] = "http://127.0.0.1:7890"
+    os.environ["https_proxy"] = "http://127.0.0.1:7890"
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map="auto",
+        cache_dir="./"
     )
     model = prepare_model_for_int8_training(model)
     model = get_peft_model(
@@ -129,7 +133,7 @@ def get_model(base_model, resume_from_checkpoint):
 def train(
         # model/data params
         # base_model: str = "NousResearch/Llama-2-7b-chat-hf",  # the only required argument
-        base_model: str = "daryl149/llama-2-7b-chat-hf",  # the only required argument
+        base_model: str = "daryl149/llama-2-7b-chat-hf",
         data_path: str = "data/MultiWOZ_2.2_preprocess/train.json",
         output_dir: str = "./output_model_full",
         schema_path: str = "data/multiwoz/data/MultiWOZ_2.2/schema.json",
@@ -164,7 +168,7 @@ def train(
     tokenizer, tokenize_func = get_tokenizer(base_model)
     data = PreprocessedDataset(
         data_path,
-        sample=0.001,
+        # sample=0.0001,
         prompter=DefaultPrompter(schema_path),
         tokenize_func=tokenize_func
     )
@@ -174,10 +178,10 @@ def train(
         train_dataset=data,
         eval_dataset=None,
         args=transformers.TrainingArguments(
-            per_device_train_batch_size=2,
-            gradient_accumulation_steps=64,
+            per_device_train_batch_size=4,
+            gradient_accumulation_steps=32,
             warmup_steps=100,
-            num_train_epochs=2,
+            num_train_epochs=1,
             learning_rate=1e-3,
             fp16=True,
             logging_steps=10,
@@ -185,7 +189,7 @@ def train(
             # evaluation_strategy="steps",
             save_strategy="steps",
             # eval_steps=200,
-            save_steps=10,
+            save_steps=100,
             output_dir=output_dir,
             save_total_limit=3,
             # load_best_model_at_end=True,
@@ -197,10 +201,9 @@ def train(
         ),
     )
 
-    trainer.train(
-        # resume_from_checkpoint=resume_from_checkpoint
-    )
-    # trainer.save_model()
+    trainer.train()
+    # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    trainer.save_model()
 
     # model.save_pretrained(output_dir)
 

@@ -65,9 +65,10 @@ def generation(prompt, tokenizer, model):
 
 def main(
         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
-        base_model="NousResearch/Llama-2-7b-chat-hf",
-        lora_weights="output_model/checkpoint-200",
-        # base_model="NousResearch/Llama-2-7b-hf",
+        # base_model="NousResearch/Llama-2-7b-chat-hf",
+        base_model="daryl149/llama-2-7b-chat-hf",
+        lora_weights="output_model_full",
+        # lora_weights="output_model_full/checkpoints-100",
         processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
         output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
 ):
