@@ -1,10 +1,6 @@
 import json
-import os
 import random
 import sys
-from typing import List
-
-import fire
 import torch
 import transformers
 from torch.utils.data import Dataset
@@ -14,7 +10,7 @@ from peft import (
     get_peft_model,
     get_peft_model_state_dict,
     prepare_model_for_int8_training,
-    set_peft_model_state_dict,
+    # set_peft_model_state_dict,
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
