@@ -178,8 +178,8 @@ def train(
         train_dataset=data,
         eval_dataset=None,
         args=transformers.TrainingArguments(
-            per_device_train_batch_size=8,
-            gradient_accumulation_steps=16,
+            per_device_train_batch_size=32,
+            gradient_accumulation_steps=4,
             warmup_steps=100,
             num_train_epochs=1,
             learning_rate=1e-3,
@@ -194,7 +194,7 @@ def train(
             save_total_limit=3,
             # load_best_model_at_end=True,
             # ddp_find_unused_parameters=False if ddp else None,
-            group_by_length=False,  # faster, but produces an odd training loss curve
+            group_by_length=True,  # faster, but produces an odd training loss curve
         ),
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
