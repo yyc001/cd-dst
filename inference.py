@@ -3,6 +3,7 @@ import os
 import sys
 
 import torch
+from accelerate import Accelerator
 from peft import PeftModel
 from tqdm import tqdm
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
@@ -18,9 +19,14 @@ def sys_proxy():
 def load_model(base_model, local_files_only=False, lora_weights=""):
     if not local_files_only:
         sys_proxy()
+    tokenizer = LlamaTokenizer.from_pretrained(
+        base_model,
+        local_files_only=local_files_only,
+        cache_dir="./"
+    )
     model = LlamaForCausalLM.from_pretrained(
         base_model,
-        load_in_8bit=True,
+        # load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map="auto",
         local_files_only=local_files_only,
@@ -32,17 +38,14 @@ def load_model(base_model, local_files_only=False, lora_weights=""):
             lora_weights,
             torch_dtype=torch.float16,
         )
+        tokenizer.bos_token_id = 1
+        tokenizer.eos_token_id = 2
+        tokenizer.pad_token_id = 0
     model.eval()
+    # model.cuda()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
-    tokenizer = LlamaTokenizer.from_pretrained(base_model,
-                                               local_files_only=local_files_only,
-                                               cache_dir="./"
-                                               )
-    # tokenizer.bos_token_id = 1
-    # tokenizer.eos_token_id = 2
-    # tokenizer.pad_token_id = 0
     return tokenizer, model
 
 
@@ -85,7 +88,7 @@ def main(
 
     for idx, sample in enumerate(tqdm(data)):
         this_index_turn = f'{sample["index"]}|{sample["turn"]}'
-        if last_index_turn != this_index_turn:
+        if last_index_turn and last_index_turn != this_index_turn:
             last_index_turn = this_index_turn
             jga_tot += 1
             if last_full_state:

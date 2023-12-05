@@ -78,12 +78,12 @@ def get_model(base_model, resume_from_checkpoint):
     os.environ["https_proxy"] = "http://127.0.0.1:7890"
     model = LlamaForCausalLM.from_pretrained(
         base_model,
-        load_in_8bit=True,
+        # load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map="auto",
         cache_dir="./"
     )
-    model = prepare_model_for_int8_training(model)
+    # model = prepare_model_for_int8_training(model)
     model = get_peft_model(
         model=model,
         peft_config=LoraConfig(
@@ -180,8 +180,8 @@ def train(
         train_dataset=data,
         eval_dataset=None,
         args=transformers.TrainingArguments(
-            per_device_train_batch_size=16,
-            gradient_accumulation_steps=8,
+            per_device_train_batch_size=1,
+            gradient_accumulation_steps=128,
             warmup_steps=100,
             num_train_epochs=1,
             learning_rate=1e-3,
@@ -196,7 +196,7 @@ def train(
             save_total_limit=3,
             # load_best_model_at_end=True,
             # ddp_find_unused_parameters=False if ddp else None,
-            group_by_length=True,  # faster, but produces an odd training loss curve
+            # group_by_length=False,  # faster, but produces an odd training loss curve
         ),
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
