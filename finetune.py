@@ -10,7 +10,7 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    prepare_model_for_int8_training,
+    # prepare_model_for_int8_training,
     # set_peft_model_state_dict,
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer
@@ -20,7 +20,19 @@ from prompter import DefaultPrompter
 
 class PreprocessedDataset(Dataset):
     def __init__(self, data_path, sample=None, prompter=None, tokenize_func=None):
-        self.data = json.load(open(data_path, "r"))
+        data = json.load(open(data_path, "r"))
+        none_state_count = 0
+        not_none_state_count = 0
+        for item in data:
+            if item["value"] == "none":
+                none_state_count += 1
+            else:
+                not_none_state_count += 1
+        print(none_state_count, not_none_state_count)
+        self.data = []
+        for item in data:
+            if item["value"] != "none" or random.random() > not_none_state_count/none_state_count:
+                self.data.append(item)
         if sample is not None:
             sample_num = round(len(self.data) * sample)
             random.shuffle(self.data)
@@ -31,7 +43,7 @@ class PreprocessedDataset(Dataset):
     def __getitem__(self, index):
         item = self.data[index]
         if self.prompter:
-            item = self.prompter.generate_prompt(item["dialogue"], item["domain"], item["slot"])
+            item = self.prompter.generate_prompt(item["dialogue"], item["domain"], item["slot"], item["value"])
         if self.tokenize_func:
             item = self.tokenize_func(item)
         return item
@@ -132,8 +144,7 @@ def get_model(base_model, resume_from_checkpoint):
 
 def train(
         # model/data params
-        # base_model: str = "NousResearch/Llama-2-7b-chat-hf",  # the only required argument
-        base_model: str = "daryl149/llama-2-7b-chat-hf",
+        base_model: str = "NousResearch/Llama-2-7b-chat-hf",
         data_path: str = "data/MultiWOZ_2.2_preprocess/train.json",
         output_dir: str = "./output_model_full",
         schema_path: str = "data/multiwoz/data/MultiWOZ_2.2/schema.json",
@@ -204,8 +215,8 @@ def train(
     )
     print("-----train-----")
     trainer.train()
+    # trainer.train(resume_from_checkpoint="output_model_full/checkpoint-100")
     print("-----save-----")
-    # trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     trainer.save_model()
 
     # model.save_pretrained(output_dir)

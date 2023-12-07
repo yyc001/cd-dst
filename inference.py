@@ -8,7 +8,7 @@ from peft import PeftModel
 from tqdm import tqdm
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
-from prompter import DefaultPrompter
+from prompter import DefaultPrompter, Prompter
 
 
 def sys_proxy():
@@ -32,7 +32,7 @@ def load_model(base_model, local_files_only=False, lora_weights=""):
         local_files_only=local_files_only,
         cache_dir="./"
     )
-    if os.path.exists(lora_weights):
+    if lora_weights and os.path.exists(lora_weights):
         model = PeftModel.from_pretrained(
             model,
             lora_weights,
@@ -58,7 +58,13 @@ def generation(prompt, tokenizer, model):
     with torch.no_grad():
         generation_output = model.generate(
             input_ids=input_ids,
-            max_new_tokens=32,
+            max_new_tokens=128,
+            # generation_config=GenerationConfig(
+            #     temperature=0.02,
+            #     top_p=0,
+            #     top_k=1,
+            #     num_beams=1,
+            # )
         )
     # print(generation_output)
     s = generation_output[0]
@@ -68,16 +74,18 @@ def generation(prompt, tokenizer, model):
 
 def main(
         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
-        # base_model="NousResearch/Llama-2-7b-chat-hf",
-        base_model="daryl149/llama-2-7b-chat-hf",
-        lora_weights="output_model_full",
-        # lora_weights="output_model_full/checkpoints-100",
+        base_model="NousResearch/Llama-2-7b-chat-hf",
+        # base_model="daryl149/llama-2-7b-chat-hf",
+        # base_model="baffo32/decapoda-research-llama-7b-hf",
+        # lora_weights=None,
+        lora_weights="output_model_full/checkpoints-1700",
         processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
         output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
 ):
-    prompter = DefaultPrompter(schema_path)
+    prompter = Prompter(schema_path)
     tokenizer, model = load_model(base_model, lora_weights=lora_weights)
     data = json.load(open(processed_data_path, "r"))
+    data = [item for item in data if item["value"] != "none"]
     response_list = []
     aga_num = 0
 
@@ -88,7 +96,9 @@ def main(
 
     for idx, sample in enumerate(tqdm(data)):
         this_index_turn = f'{sample["index"]}|{sample["turn"]}'
-        if last_index_turn and last_index_turn != this_index_turn:
+        if last_index_turn == "":
+            last_index_turn = this_index_turn
+        if last_index_turn != this_index_turn:
             last_index_turn = this_index_turn
             jga_tot += 1
             if last_full_state:
@@ -101,13 +111,15 @@ def main(
 
         prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
         output = generation(prompt, tokenizer, model)
+        # print(output)
         response = prompter.get_response(output)
 
         if sample['value'] == response:
             aga_num += 1
         else:
             last_full_state = False
-            # print(f"{aga_num/(idx+1)}|||{sample['slot']}|||{sample['value']}|||{response}")
+            # print(sample["dialogue"])
+            print(f"{aga_num / (idx + 1)}|||{sample['slot']}|||{sample['value']}|||{response}")
 
         response_list.append({
             "index": sample["index"],
@@ -124,3 +136,23 @@ def main(
 
 if __name__ == "__main__":
     main()
+'''
+NOT NONE:
+AGA for 0~3100: 0.6133505320864238
+JGA for 0~3100: 0.15824915824915825
+NONE:
+AGA for 0~1000: 0.28471528471528473
+JGA for 0~1000: 0.0
+ALL:
+AGA for 0~2000: 0.3803098450774613
+JGA for 0~2000: 0.0
+'''
+
+'''
+ALL 2.4:
+AGA for 0~800: 0.630461922596754
+JGA for 0~800: 0.0
+NOT NONE:
+AGA for 0~1000: 0.31368631368631367
+JGA for 0~1000: 0.0
+'''

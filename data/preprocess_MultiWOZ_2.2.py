@@ -27,7 +27,7 @@ for data_type in ["train", "dev", "test"]:
         domains = sample["services"]
         dialogue_history = ""
         for turn_id, turn in enumerate(sample["turns"]):
-            dialogue_history += f"[{turn['speaker']}] {turn['utterance'] }"
+            dialogue_history += f"[{turn['speaker']}] {turn['utterance']} "
             if turn_id % 2 == 1:
                 continue
             this_turn_samples = {}

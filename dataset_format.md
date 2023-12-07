@@ -99,7 +99,7 @@ each file 1000 lines, each line contains a `_index_` indicates this data should 
 ```
 [{
     "dialogue_id": _index_,
-    "services": [ _dimain_ ],
+    "services": [ _domain_ ],
     "turns": [{
         "frames": [{ # SYSTEM's turn if frames empty else 8
             "actions": [],
