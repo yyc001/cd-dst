@@ -8,6 +8,7 @@ from peft import PeftModel
 from tqdm import tqdm
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
+from contra_llama import PromptContraDecodeLlama
 from prompter import DefaultPrompter, Prompter
 from llama import Llama
 
@@ -17,33 +18,29 @@ def sys_proxy():
     os.environ["https_proxy"] = "http://127.0.0.1:7890"
 
 
-def generation(prompt, generator):
-    results = generator.text_completion(
-        # [[{"role": "user", "content": prompt}]],  # type: ignore
-        [prompt],
-        max_gen_len=64,
-        temperature=0.6,
-        top_p=0.9,
-    )
-    output = results[0]['generation']
-    print(output)
-    return output
-
-
 def main(
         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
         processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
-        output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
+        output_file="data/MultiWOZ_2.2_preprocess/test_out.json",
+        contra_decode=False,
 ):
-    generator = Llama.build(
-        ckpt_dir="../llama/llama-2-7b/",
-        tokenizer_path="tokenizer.model",
-        max_seq_len=512,
-        max_batch_size=4,
-    )
+    if contra_decode:
+        generator = PromptContraDecodeLlama.build(
+            ckpt_dir="../llama/llama-2-7b-chat/",
+            tokenizer_path="../llama/tokenizer.model",
+            max_seq_len=1024,
+            max_batch_size=4,
+        )
+    else:
+        generator = Llama.build(
+            ckpt_dir="../llama/llama-2-7b-chat/",
+            tokenizer_path="../llama/tokenizer.model",
+            max_seq_len=1024,
+            max_batch_size=4,
+        )
     prompter = Prompter(schema_path)
     data = json.load(open(processed_data_path, "r"))
-    # data = [item for item in data if item["value"] != "none"]
+    data = [item for item in data if item["value"] != "none"]
     response_list = []
     aga_num = 0
 
@@ -67,8 +64,39 @@ def main(
             print(f"AGA for 0~{idx}: {aga_num / (idx + 1)}")
             print(f"JGA for 0~{idx}: {jga_num / jga_tot}")
 
-        prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
-        output = generation(prompt, generator)
+        if contra_decode:
+            # print(">>-------------")
+            prompt, noob_prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"], pair=True)
+            generator.enable_cd = True
+            output = generator.chat_completion(
+                [[{"role": "user", "content": prompt}],
+                 [{"role": "user", "content": noob_prompt}]],  # type: ignore
+                max_gen_len=64,
+                temperature=0.6,
+                top_p=0.9,
+            )[0]['generation']['content']
+            # print(output)
+            # generator.enable_cd = False
+            # output2 = generator.chat_completion(
+            #     [[{"role": "user", "content": prompt}]],  # type: ignore
+            #     max_gen_len=64,
+            #     temperature=0.6,
+            #     top_p=0.9,
+            # )[0]['generation']['content']
+            # print(output2)
+        else:
+            # prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
+            prompt, noob_prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"],
+                                                           pair=True)
+            generator.enable_cd = False
+            results = generator.chat_completion(
+                [[{"role": "user", "content": prompt}]],  # type: ignore
+                max_gen_len=64,
+                temperature=0.6,
+                top_p=0.9,
+            )
+            output = results[0]['generation']['content']
+
         # print(output)
         response = prompter.get_response(output)
 
