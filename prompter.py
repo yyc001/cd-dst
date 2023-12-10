@@ -141,6 +141,7 @@ class Prompter:
             slot = slot.split("-")[1]
         slot = slot.lower()
         intput_template = "Input dialogue: {text} [domain] {domain} [slot] {slot}, it indicates {slot_explain} {possible_values} If the slot is not mentioned in the dialogue, just return NONE.\n So the value of slot <{domain_slot}> is \n"
+        intput_template2 = "Input dialogue: {text} So the value of slot <{domain_slot}> is \n"
         instruction = "Now you need to perform the task of multi-domain dialogue state tracking. You need to return the value of the slot I’m asking about simply based on the content of the dialogue. No explanation!"
         possible_values = self.possible_values_prompt.format(
             "not mentioned, " + ", ".join(self.slot_possible_values[f"{domain}-{slot}"])
@@ -172,9 +173,9 @@ class Prompter:
             return res, noob_res
         return res
 
-    def get_response(self, output: str) -> str:
-        # response = output.split(self.template["response_split"])[1].strip()
-        response = output
+    def get_response(self, response: str) -> str:
+        if self.template["response_split"] in response:
+            response = response.split(self.template["response_split"])[1].strip()
         if " is:" in response:
             response = response.split(" is:")[1]
         if " is " in response:

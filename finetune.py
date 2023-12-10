@@ -15,24 +15,24 @@ from peft import (
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer
 
-from prompter import DefaultPrompter
+from prompter import DefaultPrompter, Prompter
 
 
 class PreprocessedDataset(Dataset):
     def __init__(self, data_path, sample=None, prompter=None, tokenize_func=None):
-        data = json.load(open(data_path, "r"))
-        none_state_count = 0
-        not_none_state_count = 0
-        for item in data:
-            if item["value"] == "none":
-                none_state_count += 1
-            else:
-                not_none_state_count += 1
-        print(none_state_count, not_none_state_count)
-        self.data = []
-        for item in data:
-            if item["value"] != "none" or random.random() > not_none_state_count/none_state_count:
-                self.data.append(item)
+        self.data = json.load(open(data_path, "r"))
+        # none_state_count = 0
+        # not_none_state_count = 0
+        # for item in data:
+        #     if item["value"] == "none":
+        #         none_state_count += 1
+        #     else:
+        #         not_none_state_count += 1
+        # print(none_state_count, not_none_state_count)
+        # self.data = []
+        # for item in data:
+        #     if item["value"] != "none" or random.random() > not_none_state_count/none_state_count:
+        #         self.data.append(item)
         if sample is not None:
             sample_num = round(len(self.data) * sample)
             random.shuffle(self.data)
@@ -56,7 +56,6 @@ def get_tokenizer(base_model):
     tokenizer = LlamaTokenizer.from_pretrained(base_model, cache_dir="./")
     tokenizer.bos_token_id = 1
     tokenizer.eos_token_id = 2
-    tokenizer.pad_token_id = 0
     tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
     tokenizer.padding_side = "left"  # Allow batched inference
     cutoff_len = 512
@@ -86,8 +85,8 @@ def get_tokenizer(base_model):
 
 
 def get_model(base_model, resume_from_checkpoint):
-    os.environ["http_proxy"] = "http://127.0.0.1:7890"
-    os.environ["https_proxy"] = "http://127.0.0.1:7890"
+    # os.environ["http_proxy"] = "http://127.0.0.1:7890"
+    # os.environ["https_proxy"] = "http://127.0.0.1:7890"
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         # load_in_8bit=True,
@@ -181,7 +180,7 @@ def train(
     data = PreprocessedDataset(
         data_path,
         # sample=0.0001,
-        prompter=DefaultPrompter(schema_path),
+        prompter=Prompter(schema_path),
         tokenize_func=tokenize_func
     )
     print("data length:", len(data))
@@ -194,7 +193,7 @@ def train(
             per_device_train_batch_size=1,
             gradient_accumulation_steps=128,
             warmup_steps=100,
-            num_train_epochs=1,
+            num_train_epochs=10,
             learning_rate=1e-3,
             fp16=True,
             logging_steps=10,
@@ -202,7 +201,7 @@ def train(
             # evaluation_strategy="steps",
             save_strategy="steps",
             # eval_steps=200,
-            save_steps=100,
+            save_steps=200,
             output_dir=output_dir,
             save_total_limit=3,
             # load_best_model_at_end=True,
