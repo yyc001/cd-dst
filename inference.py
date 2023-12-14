@@ -4,7 +4,7 @@ import sys
 
 import torch
 from accelerate import Accelerator
-from peft import PeftModel
+from peft import PeftModel, LoraConfig, get_peft_model
 from tqdm import tqdm
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
@@ -17,20 +17,20 @@ def sys_proxy():
 
 
 def load_model(base_model, local_files_only=False, lora_weights=""):
-    if not local_files_only:
-        sys_proxy()
+    # if not local_files_only:
+    #     sys_proxy()
     tokenizer = LlamaTokenizer.from_pretrained(
         base_model,
-        local_files_only=local_files_only,
-        cache_dir="./"
+        # local_files_only=local_files_only,
+        # cache_dir="./"
     )
     model = LlamaForCausalLM.from_pretrained(
         base_model,
         # load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map="auto",
-        local_files_only=local_files_only,
-        cache_dir="./"
+        # local_files_only=local_files_only,
+        # cache_dir="./"
     )
     if lora_weights and os.path.exists(lora_weights):
         model = PeftModel.from_pretrained(
@@ -38,9 +38,22 @@ def load_model(base_model, local_files_only=False, lora_weights=""):
             lora_weights,
             torch_dtype=torch.float16,
         )
-        tokenizer.bos_token_id = 1
-        tokenizer.eos_token_id = 2
-        tokenizer.pad_token_id = 0
+    # else:
+    #     model = get_peft_model(
+    #         model=model,
+    #         peft_config=LoraConfig(
+    #             bias="none",
+    #             lora_alpha=16,
+    #             lora_dropout=0.05,
+    #             r=8,
+    #             target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    #             # target_modules=["q_proj", "v_proj"],
+    #             task_type="CAUSAL_LM"
+    #         )
+    #     )
+    tokenizer.bos_token_id = 1
+    tokenizer.eos_token_id = 2
+    model.config.pad_token_id = tokenizer.pad_token_id = 0
     model.eval()
     # model.cuda()
     if torch.__version__ >= "2" and sys.platform != "win32":
@@ -59,33 +72,47 @@ def generation(prompt, tokenizer, model):
         generation_output = model.generate(
             input_ids=input_ids,
             max_new_tokens=128,
-            # generation_config=GenerationConfig(
-            #     temperature=0.02,
-            #     top_p=0,
-            #     top_k=1,
-            #     num_beams=1,
-            # )
         )
+        # generation_output = model.generate(
+        #     input_ids=input_ids,
+        #     generation_config=GenerationConfig(
+        #         temperature=0.02,
+        #         top_p=0,
+        #         top_k=1,
+        #         num_beams=1,
+        #     ),
+        #     return_dict_in_generate=True,
+        #     output_scores=True,
+        #     max_new_tokens=128,
+        # )
     # print(generation_output)
     s = generation_output[0]
     output = tokenizer.decode(s)
     return output
 
 
+# def main(
+#         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
+#         base_model="NousResearch/Llama-2-7b-chat-hf",
+#         lora_weights="Checkpoint_files/checkpoint-4000",
+#         processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
+#         output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
+# ):
 def main(
         schema_path="data/multiwoz/data/MultiWOZ_2.2/schema.json",
-        base_model="NousResearch/Llama-2-7b-chat-hf",
-        # base_model="daryl149/llama-2-7b-chat-hf",
-        # base_model="baffo32/decapoda-research-llama-7b-hf",
-        # lora_weights=None,
-        lora_weights="output_model_full/checkpoints-1700",
-        processed_data_path="data/MultiWOZ_2.2_preprocess/test.json",
-        output_file="data/MultiWOZ_2.2_preprocess/test_out.json"
+        base_model="baffo32/decapoda-research-llama-7b-hf",
+        lora_weights="LDST/Checkpoint_files/Few-shot_MultiWOZ2-4_10percent",
+        # processed_data_path="LDST/Data/MULTIWOZ2.4_preprocess/test_5p.json",
+        processed_data_path="data/MultiWOZ_2.4_preprocess/test.json",
+        output_file="data/MultiWOZ_2.4_preprocess/test_out_LDST_10p.json"
 ):
     prompter = Prompter(schema_path)
     tokenizer, model = load_model(base_model, lora_weights=lora_weights)
+    # data = []
+    # for line in open(processed_data_path, "r"):
+    #     data.append(json.loads(line))
     data = json.load(open(processed_data_path, "r"))
-    data = [item for item in data if item["value"] != "none"]
+    # data = [item for item in data if item["value"] != "none"]
     response_list = []
     aga_num = 0
 
@@ -93,8 +120,18 @@ def main(
     jga_tot = -1
     last_index_turn = ""
     last_full_state = True
-
+    # idx_lines = open("LDST/Data/MULTIWOZ2.4_preprocess/test_5p.idx").readlines()
     for idx, sample in enumerate(tqdm(data)):
+        # idx_entity = idx_lines[idx].strip().split("|||")
+        # sample = {
+        #     "index": idx_entity[1],
+        #     "turn": idx_entity[2],
+        #     "domain": idx_entity[4],
+        #     "slot": idx_entity[5],
+        #     "dialogue": sample["dialogue"][:sample["dialogue"].find("[domain]")],
+        #     # "active": sample["active"],
+        #     "value": sample["state"]
+        # }
         this_index_turn = f'{sample["index"]}|{sample["turn"]}'
         if last_index_turn == "":
             last_index_turn = this_index_turn
@@ -109,12 +146,12 @@ def main(
             print(f"AGA for 0~{idx}: {aga_num / (idx + 1)}")
             print(f"JGA for 0~{idx}: {jga_num / jga_tot}")
 
-        prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
-        output = generation(prompt, tokenizer, model)
+        noob_prompt = prompter.noob_prompt(sample["dialogue"], sample["domain"], sample["slot"])
+        output = generation(noob_prompt, tokenizer, model)
         # print(output)
         response = prompter.get_response(output)
 
-        if sample['value'] == response:
+        if sample['value'].lower() == response.lower():
             aga_num += 1
         else:
             last_full_state = False
@@ -130,7 +167,8 @@ def main(
             "value": response,
             "ground_truth": sample["value"]
         })
-    print("accuracy:", 1 - aga_num / len(data))
+    print("AGA:", 1 - aga_num / len(data))
+    print("JGA:", jga_num / jga_tot)
     json.dump(response_list, open(output_file, "w"))
 
 

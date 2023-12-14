@@ -38,7 +38,7 @@ for index in data:
                     "dialogue": dialogue_history,
                     "domain": domain,
                     "slot": slot,
-                    "value": value if value else "none"
+                    "value": value if value else "NONE"
                 }
                 if index in val_indexes:
                     val_data.append(item)
