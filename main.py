@@ -72,6 +72,14 @@ def main(
             [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
         ))
 
+def evaluate_process(processed_data_path, output_file):
+    data = json.load(open(processed_data_path, "r"))
+    evaluator = Evaluator()
+    predicted = json.load(open(output_file, "r"))
+
+    print("\n".join(
+            [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
+        ))
 
 if __name__ == "__main__":
     LOGGING_LEVEL = logging.INFO
@@ -81,5 +89,10 @@ if __name__ == "__main__":
     parser.add_argument('--processed_data_path', type=str, default="data/MultiWOZ_2.4_processed/test.json")
     parser.add_argument('--model_name', type=str, default="llama-2-7b-chat")
     parser.add_argument('--resume', type=bool, default=True)
+    parser.add_argument('--job', type=str, default="inference", choices=["inference", "evaluation"])
     args = parser.parse_args()
-    main(**args.__dict__)
+    if args.job == "inference":
+        main(**args.__dict__)
+    elif args.job == "evaluation":
+        evaluate_process(**args.__dict__)
+
