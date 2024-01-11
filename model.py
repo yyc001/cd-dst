@@ -44,7 +44,6 @@ class ChatGPTModel(InferenceModel):
     def __init__(self, **kwargs):
         from openai import OpenAI
         self.client = OpenAI(
-            api_key="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"
         )
 
     def generate(self, prompt):
