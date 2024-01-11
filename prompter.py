@@ -465,17 +465,22 @@ Please write the lists: (Don't write anything other than the lists themselves)
         )
 
     def get_response(self, output):
-        if "column" not in output and "informed" not in "output":
+        if "column" not in output and "informed" not in output:
             return {
                 "FAILED": "PARSE FAILED"
             }
+        output = output.split("\n\n")[0].replace("\n", " ")
         pat = re.findall(r"\d+ column(s)?: (.*)", output)
         if len(pat) == 0:
             return {}
         pat = pat[0]
         sv_str = pat[1]
+        if ";" in sv_str:
+            sv_str = sv_str.split(";")
+        elif "*" in sv_str:
+            sv_str = sv_str.split("*")
         preds = {}
-        for sv in sv_str.split(";"):
+        for sv in sv_str:
             if "=" not in sv or len(sv.split("=")) != 2:
                 continue
             slot, value = sv.split("=")
@@ -583,5 +588,5 @@ Please write the lists: (Don't write anything other than the lists themselves)
                 possible_value = prefix + value + suffix
                 if possible_value in candidates:
                     return possible_value
-        return ''
+        return value
 

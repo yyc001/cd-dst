@@ -32,7 +32,7 @@ class LLaMaModel(InferenceModel):
             [
                 [{"role": "user", "content": prompt}],
             ],
-            max_gen_len=64,
+            max_gen_len=128,
             temperature=0.2,
             top_p=0.9,
         )[0]['generation']['content']
