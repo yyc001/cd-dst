@@ -25,7 +25,7 @@ def main(
         # prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
         prompt = prompter.generate_prompt(sample["dialogue"], sample["domain"], sample["slot"])
         total_token += len(encoding.encode(prompt))
-    print("total input token:", total_token)  # 47570187 $47.570187
+    print("total input token:", total_token)  # 155170 47570187 $47.570187
     # output ???
 
 

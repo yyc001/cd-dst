@@ -1,21 +1,21 @@
 import json
 import os
 
-preprocessed_path = "MultiWOZ_2.2_preprocess"
-predicted_path = "MultiWOZ_2.2_preprocess_with_none"
+preprocessed_path = "MultiWOZ_2.4_preprocess"
+predicted_path = "MultiWOZ_2.4_preprocess"
 
 for data_type in ["test"]:
     ground_truth = json.load(open(os.path.join(preprocessed_path, data_type + ".json")))
-    predicted = json.load(open(os.path.join(predicted_path, data_type + "_out.json")))
+    predicted = json.load(open(os.path.join(predicted_path, data_type + "_out_LDST_10p.json")))
     assert len(ground_truth) == len(predicted)
     AGA_score = 0
     ground_truth_index = {}
     for sample in ground_truth:
-        ground_truth_index[f'{sample["index"]}|{sample["turn"]}|{sample["domain"]}|{sample["slot"]}'] = sample["value"]
+        ground_truth_index[f'{sample["index"]}|{sample["turn"]}|{sample["domain"]}|{sample["slot"]}'] = sample["value"].replace("not mentioned", "none")
     predicted_index = {}
     for sample in predicted:
         Y = ground_truth_index[f'{sample["index"]}|{sample["turn"]}|{sample["domain"]}|{sample["slot"]}']
-        if Y == sample["value"]:
+        if Y.lower() == sample["value"].replace("not mentioned", "none").lower():
             AGA_score += 1
         # predicted_index[f'{sample["index"]}|{sample["turn"]}|{sample["domain"]}|{sample["slot"]}'] = sample["value"]
     # ground_truth_list = [ground_truth_index[key] for key in sorted(ground_truth_index.keys())]

@@ -151,7 +151,7 @@ def main(
         # print(output)
         response = prompter.get_response(output)
 
-        if sample['value'].lower() == response.lower():
+        if sample['value'].lower() == response.lower() or sample['value'].replace("not mentioned", "NONE"):
             aga_num += 1
         else:
             last_full_state = False
@@ -167,7 +167,7 @@ def main(
             "value": response,
             "ground_truth": sample["value"]
         })
-    print("AGA:", 1 - aga_num / len(data))
+    print("AGA:", aga_num / len(data))
     print("JGA:", jga_num / jga_tot)
     json.dump(response_list, open(output_file, "w"))
 

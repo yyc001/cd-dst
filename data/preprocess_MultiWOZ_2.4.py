@@ -27,9 +27,22 @@ for index in data:
         speaker = ["USER", "SYSTEM"][turn_id % 2]
         dialogue_history += f"[{speaker}] {turn['text']} "
         for domain in turn["metadata"]:
-            for slot, value in \
-                    list(turn["metadata"][domain]["book"].items()) \
-                    + list(turn["metadata"][domain]["semi"].items()):
+            for slot, value in turn["metadata"][domain]["semi"].items():
+                item = {
+                    "index": index,
+                    "turn": turn_id,
+                    "dialogue": dialogue_history,
+                    "domain": domain,
+                    "slot": slot,
+                    "value": value if value else "not mentioned"
+                }
+                if index in val_indexes:
+                    val_data.append(item)
+                elif index in test_indexes:
+                    test_data.append(item)
+                else:
+                    train_data.append(item)
+            for slot, value in turn["metadata"][domain]["book"].items():
                 if slot == "booked":
                     continue
                 item = {
@@ -37,8 +50,8 @@ for index in data:
                     "turn": turn_id,
                     "dialogue": dialogue_history,
                     "domain": domain,
-                    "slot": slot,
-                    "value": value if value else "NONE"
+                    "slot": "book " + slot,
+                    "value": value if value else "not mentioned"
                 }
                 if index in val_indexes:
                     val_data.append(item)
