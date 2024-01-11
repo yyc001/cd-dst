@@ -49,8 +49,11 @@ UNSAFE_ERROR = "Error: special tags are not allowed as part of the prompt."
 
 
 class Llama:
-    @staticmethod
+    # ----------------------- #
+    @classmethod
     def build(
+        cls,
+    # ----------------------- #
         ckpt_dir: str,
         tokenizer_path: str,
         max_seq_len: int,
@@ -120,7 +123,7 @@ class Llama:
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
-        return Llama(model, tokenizer)
+        return cls(model, tokenizer)
 
     def __init__(self, model: Transformer, tokenizer: Tokenizer):
         self.model = model
@@ -401,23 +404,6 @@ class Llama:
         ]
 
     def logits_processor(self, logits):
-        if not self.enable_cd:
-            return logits
-        # print(logits.shape)
-        alpha = 0.1
-        probs = torch.softmax(logits[:, -1], dim=-1).cuda()
-        # print(probs.shape)
-        expert_probs = probs[::2]
-        amateur_probs = probs[1::2]
-        # print(expert_probs.shape, amateur_probs.shape)
-
-        expert_probs[expert_probs < alpha * torch.max(expert_probs)] = 0
-        cd_score = torch.log(expert_probs / amateur_probs)
-        # print(cd_score.shape)
-        probs_cd = torch.cat([cd_score, cd_score], dim=0)
-        # print(probs_cd.shape)
-        logits[:, -1] = probs_cd
-        # print(torch.max(cd_score), torch.argmax(cd_score))
         return logits
 
 
