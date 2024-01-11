@@ -9,7 +9,7 @@ from llama import Llama
 class PromptContraDecodeLlama(Llama):
 
     def logits_processor(self, logits):
-        if not self.enable_cd:
+        if not hasattr(self, "enable_cd") or not self.enable_cd:
             return logits
         # print(logits.shape)
         alpha = 0.1

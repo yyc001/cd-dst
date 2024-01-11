@@ -23,7 +23,7 @@ class LLaMaModel(InferenceModel):
         self.model = Llama.build(
             ckpt_dir="../llama/llama-2-7b-chat/",
             tokenizer_path="../llama/tokenizer.model",
-            max_seq_len=1024,
+            max_seq_len=2048,
             max_batch_size=4,
         )
 
