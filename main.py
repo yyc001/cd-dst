@@ -68,7 +68,7 @@ def main(
         # logging.info("\n".join(
         #         [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
         #     ))
-        json.dump(predicted, open(output_file, "w"))
+        json.dump(predicted, open(output_file, "w"), indent=2)
     print("\n".join(
         [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
     ))
