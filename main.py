@@ -94,6 +94,9 @@ if __name__ == "__main__":
     parser.add_argument('--resume', type=bool, default=True)
     parser.add_argument('--job', type=str, default="inference", choices=["inference", "evaluation"])
     args = parser.parse_args()
+    print("\n".join(
+        [f"{k}: {v}" for k, v in args.__dict__.items()]
+    ))
     if args.job == "inference":
         main(**args.__dict__)
     elif args.job == "evaluation":
