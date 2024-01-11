@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_file', type=str, default="data/MultiWOZ_2.4_processed/test_out.json")
     parser.add_argument('--processed_data_path', type=str, default="data/MultiWOZ_2.4_processed/test.json")
     parser.add_argument('--model_name', type=str, default="llama-2-7b-chat")
-    parser.add_argument('--resume', type=bool, default=True)
+    parser.add_argument('--resume', type=bool)
     parser.add_argument('--job', type=str, default="inference", choices=["inference", "evaluation"])
     args = parser.parse_args()
     print("\n".join(
