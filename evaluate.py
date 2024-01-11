@@ -79,15 +79,15 @@ class Evaluator:
                 if value in typo:
                     value = typo[value]
                 if value not in ["dontcare", "yes", "no"] and value not in context:
-                    logging.info(f"+ {slot} | {value} | {ground_truth[slot] if slot in ground_truth else None} | {context}")
+                    logging.debug(f"+ {slot} | {value} | {ground_truth[slot] if slot in ground_truth else None} | {context}")
                     strict_hall += 1
                 else:
                     soft_hall += 1
 
         if joint == 0:
-            logging.info(f"ERROR CASE --------------")
-            logging.info(f"ground_truth: {ground_truth}")
-            logging.info(f"predicted: {predicted}")
+            logging.debug(f"ERROR CASE --------------")
+            logging.debug(f"ground_truth: {ground_truth}")
+            logging.debug(f"predicted: {predicted}")
 
         return {
             "correct_turn_num": joint,

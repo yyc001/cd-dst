@@ -8,7 +8,7 @@ class InferenceModel:
 
 def load_model(model_name, model_config) -> InferenceModel:
     models = {
-        "llama": LLaMaModel,
+        "llama-2-7b-chat": LLaMaModel,
         "gpt-3.5-turbo": ChatGPTModel
     }
     if model_config:

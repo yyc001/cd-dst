@@ -64,10 +64,13 @@ def main(
             logging.debug(f"ground truth: {turn['active_state']}")
         predicted[index] = predicted_states
 
-        logging.info("\n".join(
-                [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
-            ))
+        # logging.info("\n".join(
+        #         [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
+        #     ))
         json.dump(predicted, open(output_file, "w"))
+    print("\n".join(
+            [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
+        ))
 
 
 if __name__ == "__main__":
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_file', type=str, default="data/MultiWOZ_2.4_processed/test_out.json")
     parser.add_argument('--processed_data_path', type=str, default="data/MultiWOZ_2.4_processed/test.json")
-    parser.add_argument('--model_name', type=str, default="gpt-3.5-turbo")
+    parser.add_argument('--model_name', type=str, default="llama-2-7b-chat")
     parser.add_argument('--resume', type=bool, default=True)
     args = parser.parse_args()
     main(**args.__dict__)
