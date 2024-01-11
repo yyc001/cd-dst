@@ -21,7 +21,8 @@ def main(
         model_config=None,
         processed_data_path="",
         output_file="",
-        resume=True
+        resume=True,
+        **kwargs
 ):
     prompter = SingleReturnPrompter()
     generator = load_model(model_name, model_config)
@@ -69,17 +70,19 @@ def main(
         #     ))
         json.dump(predicted, open(output_file, "w"))
     print("\n".join(
-            [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
-        ))
+        [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
+    ))
 
-def evaluate_process(processed_data_path, output_file):
+
+def evaluate_process(processed_data_path, output_file, **kwargs):
     data = json.load(open(processed_data_path, "r"))
     evaluator = Evaluator()
     predicted = json.load(open(output_file, "r"))
 
     print("\n".join(
-            [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
-        ))
+        [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
+    ))
+
 
 if __name__ == "__main__":
     LOGGING_LEVEL = logging.INFO
@@ -95,4 +98,3 @@ if __name__ == "__main__":
         main(**args.__dict__)
     elif args.job == "evaluation":
         evaluate_process(**args.__dict__)
-
