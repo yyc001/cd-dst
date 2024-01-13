@@ -1,28 +1,29 @@
 
 
 class InferenceModel:
+    def __init__(self):
+        self.name = self.__class__
 
     def generate(self, prompt):
         raise NotImplementedError
 
 
-def load_model(model_name, model_config) -> InferenceModel:
+def load_model(model_config: dict) -> InferenceModel:
     models = {
-        "llama-2-7b-chat": LLaMaModel,
-        "gpt-3.5-turbo": ChatGPTModel
+        "llama-2": LLaMaModel,
+        "gpt-3.5-turbo": ChatGPTModel,
+        "flan-t5-xxl": FlanT5Model
     }
-    if model_config:
-        return models[model_name](**model_config)
-    else:
-        return models[model_name]()
+    return models[model_config['name']](**model_config)
 
 
 class LLaMaModel(InferenceModel):
-    def __init__(self, **kwargs):
+    def __init__(self, model_path, tokenizer, **kwargs):
+        super().__init__()
         from llama import Llama
         self.model = Llama.build(
-            ckpt_dir="../llama/llama-2-7b-chat/",
-            tokenizer_path="../llama/tokenizer.model",
+            ckpt_dir=model_path,
+            tokenizer_path=tokenizer,
             max_seq_len=2048,
             max_batch_size=4,
         )
@@ -42,6 +43,7 @@ class LLaMaModel(InferenceModel):
 class ChatGPTModel(InferenceModel):
 
     def __init__(self, **kwargs):
+        super().__init__()
         from openai import OpenAI
         self.client = OpenAI(
         )
@@ -56,3 +58,17 @@ class ChatGPTModel(InferenceModel):
         )
         response = response.choices[0].message.content
         return response
+
+
+class FlanT5Model(InferenceModel):
+    def __init__(self):
+        super().__init__()
+        from transformers import pipeline
+        self.pipe = pipeline("text2text-generation", model="google/flan-t5-xxl")
+
+    def generate(self, prompt):
+        response = self.pipe(prompt
+                             # max_length=30,
+                             # num_return_sequences=2,
+                             )
+        return response[0]['generated_text']

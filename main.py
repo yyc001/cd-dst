@@ -16,21 +16,20 @@ def sys_proxy():
     os.environ["https_proxy"] = "http://127.0.0.1:7890"
 
 
-def main(
-        model_name="",
-        model_config=None,
-        processed_data_path="",
-        output_file="",
-        resume=True,
+def inference(
+        model_config,
+        data_path,
+        output_file,
+        resume,
         **kwargs
 ):
     prompter = SingleReturnPrompter()
-    generator = load_model(model_name, model_config)
-    data = json.load(open(processed_data_path, "r"))
-    evaluator = Evaluator()
+    model_config = json.load(open(model_config))
+    generator = load_model(model_config)
+    data = json.load(open(data_path, "r"))
 
-    logging.info(f"Model: {model_name}, {model_config}")
-    logging.info("Input data: " + processed_data_path)
+    logging.info(f"Model: {model_config}")
+    logging.info("Input data: " + data_path)
     logging.info("Prompt example: \n" + prompter.generate_prompt("$1", "$2", {"$3": "$4"}))
 
     if os.path.exists(output_file) and resume:
@@ -64,20 +63,24 @@ def main(
             logging.debug(f"predicted: {active_state}")
             logging.debug(f"ground truth: {turn['active_state']}")
         predicted[index] = predicted_states
-
-        # logging.info("\n".join(
-        #         [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
-        #     ))
+        # evaluate_process(data_path, output_file, False, **kwargs)
         json.dump(predicted, open(output_file, "w"), indent=2)
-    print("\n".join(
-        [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
-    ))
+
+    evaluate_process(data_path, output_file, False, **kwargs)
 
 
-def evaluate_process(processed_data_path, output_file, **kwargs):
-    data = json.load(open(processed_data_path, "r"))
+def evaluate_process(data_path, output_file, reparse, **kwargs):
+    data = json.load(open(data_path, "r"))
     evaluator = Evaluator()
     predicted = json.load(open(output_file, "r"))
+    if reparse:
+        predicted_new = predicted
+        prompter = SingleReturnPrompter()
+        for index, dialog in tqdm(predicted.items()):
+            for i in range(len(dialog)):
+                predicted_new[index][i]['active_state'] = prompter.get_response(dialog[i]['output'])
+        predicted = predicted_new
+        json.dump(predicted, open(output_file, "w"), indent=2)
 
     print("\n".join(
         [f"{k}: {v}" for k, v in evaluator.evaluate(predicted, data, pred_only=True).items()]
@@ -87,17 +90,20 @@ def evaluate_process(processed_data_path, output_file, **kwargs):
 if __name__ == "__main__":
     LOGGING_LEVEL = logging.INFO
     logging.root.setLevel(LOGGING_LEVEL)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output_file', type=str, default="data/MultiWOZ_2.4_processed/test_out.json")
-    parser.add_argument('--processed_data_path', type=str, default="data/MultiWOZ_2.4_processed/test.json")
-    parser.add_argument('--model_name', type=str, default="llama-2-7b-chat")
-    parser.add_argument('--resume', type=bool)
-    parser.add_argument('--job', type=str, default="inference", choices=["inference", "evaluation"])
+    parser.add_argument('--job', type=str, choices=["inference", "evaluation"])
+    parser.add_argument('--model_config', type=str)
+    parser.add_argument('--output_file', type=str)
+    parser.add_argument('--data_path', type=str)
+    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--reparse', action='store_true')
     args = parser.parse_args()
     print("\n".join(
         [f"{k}: {v}" for k, v in args.__dict__.items()]
     ))
+
     if args.job == "inference":
-        main(**args.__dict__)
+        inference(**args.__dict__)
     elif args.job == "evaluation":
         evaluate_process(**args.__dict__)

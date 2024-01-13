@@ -2,5 +2,5 @@
 !/data/*.py
 .idea
 .env
-models*
+archive/*
 venv
