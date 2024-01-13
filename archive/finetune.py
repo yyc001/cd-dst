@@ -53,7 +53,7 @@ class PreprocessedDataset(Dataset):
 
 
 def get_tokenizer(base_model):
-    tokenizer = LlamaTokenizer.from_pretrained(base_model, cache_dir="./")
+    tokenizer = LlamaTokenizer.from_pretrained(base_model, cache_dir="../")
     tokenizer.bos_token_id = 1
     tokenizer.eos_token_id = 2
     tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
@@ -92,7 +92,7 @@ def get_model(base_model, resume_from_checkpoint):
         # load_in_8bit=True,
         torch_dtype=torch.float16,
         device_map="auto",
-        cache_dir="./"
+        cache_dir="../"
     )
     # model = prepare_model_for_int8_training(model)
     model = get_peft_model(

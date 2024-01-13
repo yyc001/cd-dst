@@ -2,18 +2,13 @@ import argparse
 import json
 import logging
 import os
-import sys
 
 from tqdm import tqdm
 
-from evaluate import Evaluator
+from archive.evaluate import Evaluator
+from dotenv import load_dotenv
 from model import load_model
 from prompter import SingleReturnPrompter
-
-
-def sys_proxy():
-    os.environ["http_proxy"] = "http://127.0.0.1:7890"
-    os.environ["https_proxy"] = "http://127.0.0.1:7890"
 
 
 def inference(
@@ -88,6 +83,7 @@ def evaluate_process(data_path, output_file, reparse, **kwargs):
 
 
 if __name__ == "__main__":
+    load_dotenv()
     LOGGING_LEVEL = logging.INFO
     logging.root.setLevel(LOGGING_LEVEL)
 

@@ -2,5 +2,4 @@
 !/data/*.py
 .idea
 .env
-archive/*
 venv

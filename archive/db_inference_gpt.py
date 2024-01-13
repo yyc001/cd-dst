@@ -69,7 +69,7 @@ turn_prompt = '''
 
 data_path = "data/MULTIWOZ2.4"
 
-ontology = json.load(open(os.path.join(data_path, "ontology.json")))
+ontology = json.load(open(os.path.join(data_path, "../ontology.json")))
 domains = set(key.split("-")[0] for key in ontology)
 client = OpenAI(
     api_key="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"
