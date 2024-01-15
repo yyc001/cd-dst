@@ -4,7 +4,7 @@ import logging
 
 class Evaluator:
     def __init__(self):
-        ontology = json.load(open("../ontology.json"))
+        ontology = json.load(open("ontology.json"))
         self.slot_space = set(key.lower().replace(" ", "_") for key in ontology.keys())
         logging.debug(self.slot_space)
 

@@ -1,3 +1,4 @@
 {
-  "name": "flan-t5-xxl"
+  "name": "flan-t5-xxl",
+  "hf_model": "google/flan-t5-xxl"
 }

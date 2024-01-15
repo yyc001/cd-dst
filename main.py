@@ -2,10 +2,11 @@ import argparse
 import json
 import logging
 import os
+import torch
 
 from tqdm import tqdm
 
-from archive.evaluate import Evaluator
+from evaluate import Evaluator
 from dotenv import load_dotenv
 from model import load_model
 from prompter import SingleReturnPrompter
@@ -25,7 +26,10 @@ def inference(
 
     logging.info(f"Model: {model_config}")
     logging.info("Input data: " + data_path)
-    logging.info("Prompt example: \n" + prompter.generate_prompt("$1", "$2", {"$3": "$4"}))
+    # logging.info("Prompt example: \n" + prompter.generate_prompt("$1", "$2", {"$3": "$4"}))
+    logging.warning("--- test model --- ")
+    logging.warning(generator.generate("Hello, what is your name?"))
+    logging.warning("--- test model end --- ")
 
     if os.path.exists(output_file) and resume:
         predicted = json.load(open(output_file, "r"))
@@ -46,7 +50,8 @@ def inference(
                 last_state={k: v for k, v in turn["state"].items() if k not in turn["active_state"]}
             )
             logging.root.setLevel(logging.ERROR)
-            output = generator.generate(prompt)
+            with torch.no_grad():
+                output = generator.generate(prompt)
             logging.root.setLevel(LOGGING_LEVEL)
             active_state = prompter.get_response(output)
             predicted_states.append({
@@ -61,7 +66,7 @@ def inference(
         # evaluate_process(data_path, output_file, False, **kwargs)
         json.dump(predicted, open(output_file, "w"), indent=2)
 
-    evaluate_process(data_path, output_file, False, **kwargs)
+    evaluate_process(data_path, output_file, False)
 
 
 def evaluate_process(data_path, output_file, reparse, **kwargs):
@@ -89,7 +94,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--job', type=str, choices=["inference", "evaluation"])
-    parser.add_argument('--model_config', type=str)
+    parser.add_argument('--model_config', type=str, default="")
     parser.add_argument('--output_file', type=str)
     parser.add_argument('--data_path', type=str)
     parser.add_argument('--resume', action='store_true')

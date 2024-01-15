@@ -74,7 +74,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
             context = "; ".join(
                 [f"{k}={v}" for k, v in last_state.items()]
             )
-        context = ""
+        # context = ""
         return self.prompt_template.format(
             input_context=context,
             input_utterance=f"sys: {system_uttr} \n usr: {user_uttr}"
