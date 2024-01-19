@@ -70,7 +70,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
         optim="adamw_torch",  # 优化器名称
         learning_rate=1e-3,  # 学习率
         eval_steps=1000,  # 多少step进行一次评估
-        save_steps=1000,  # 多少step进行一次检查点保存
+        save_steps=100,  # 多少step进行一次检查点保存
         logging_steps=10,  # 多少step记录一次训练loss
         evaluation_strategy="steps",
         group_by_length=False,
@@ -92,7 +92,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_data,
-        eval_dataset=None,
+        eval_dataset=train_data,
         dataset_text_field="text",
         peft_config=peft_config,
         max_seq_length=2048,  # 序列的最大长度
@@ -100,7 +100,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
         args=training_arguments,
     )
     # 开启模型训练
-    trainer.train()
+    trainer.train(resume_from_checkpoint=True)
     # 最终结果保存
     trainer.model.save_pretrained(output_dir)
 

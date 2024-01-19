@@ -19,6 +19,7 @@ class Evaluator:
         correct_sv_num = 0
         strict_hallucination_num = 0
         soft_hallucination_num = 0
+        correct_svb_num = 0
 
         for index, dialogue in data.items():
             context = ""
@@ -27,6 +28,7 @@ class Evaluator:
                 result = self.compare_state(dialogue[i]["active_state"], predicted[index][i]["active_state"], context)
                 correct_turn_num += result["correct_turn_num"]
                 correct_sv_num += result["correct_sv_num"]
+                correct_svb_num += result["correct_svb_num"]
                 strict_hallucination_num += result["strict_hallucination_num"]
                 soft_hallucination_num += result["soft_hallucination_num"]
                 predicted_sv_num += result["predicted_sv_num"]
@@ -38,6 +40,7 @@ class Evaluator:
             "Num of predicted slot-value pair": predicted_sv_num,
             "Joint Goal Accuracy": correct_turn_num / turn_num,
             "Active Slot Accuracy": correct_sv_num / sv_num,
+            "Total Slot Accuracy": correct_svb_num / turn_num / 37,
             "Strict Hallucination Rate": strict_hallucination_num / predicted_sv_num,
             "Soft Hallucination Rate": soft_hallucination_num / predicted_sv_num
         }
@@ -50,19 +53,23 @@ class Evaluator:
                 "correct_sv_num": 0,
                 "strict_hallucination_num": 2 * len(ground_truth),
                 "soft_hallucination_num": 0,
-                "predicted_sv_num": len(ground_truth)
+                "predicted_sv_num": len(ground_truth),
+                "correct_svb_num": 37 - len(ground_truth)
             }
 
         joint = 1
         correct_sv = 0
+        err_sv = 0
         for slot, value in predicted.items():
             if slot not in ground_truth:
                 joint = 0
+                err_sv += 1
         for slot, value in ground_truth.items():
             if slot in predicted and predicted[slot] == value:
                 correct_sv += 1
             else:
                 joint = 0
+                err_sv += 1
 
         strict_hall = 0
         soft_hall = 0
@@ -94,5 +101,6 @@ class Evaluator:
             "correct_sv_num": correct_sv,
             "strict_hallucination_num": strict_hall,
             "soft_hallucination_num": soft_hall,
-            "predicted_sv_num": len(predicted)
+            "predicted_sv_num": len(predicted),
+            "correct_svb_num": 37 - err_sv
         }
