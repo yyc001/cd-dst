@@ -103,6 +103,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
     trainer.train(resume_from_checkpoint=True)
     # 最终结果保存
     trainer.model.save_pretrained(output_dir)
+    trainer.save_model()
 
 
 if __name__ == "__main__":
