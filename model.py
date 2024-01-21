@@ -14,7 +14,8 @@ def load_model(model_config: dict) -> InferenceModel:
         "llama-2": LLaMaModel,
         "gpt-3.5-turbo": ChatGPTModel,
         "flan-t5-xxl": FlanT5Model,
-        "llama-h": LlamaHModel
+        "llama-h": LlamaHModel,
+        "tuned-llama": LlamaAdapterModel
     }
     return models[model_config['name']](**model_config)
 

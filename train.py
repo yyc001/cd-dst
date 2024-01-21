@@ -9,7 +9,7 @@ from peft import LoraConfig, get_peft_model
 from trl import SFTTrainer
 
 
-def train(model_name, data_path, output_dir, **kwargs):
+def data_process(data_path):
     data = json.load(open(data_path))
     train_data = []
     for index, dialog in data.items():
@@ -25,16 +25,22 @@ def train(model_name, data_path, output_dir, **kwargs):
             else:
                 output = "No column informed"
             text = '''Contexts: {input_context}
-Dialogue:
-{input_utterance}
-Please write the lists: (Don't write anything other than the lists themselves)
-{output} </s>'''.format(
+    Dialogue:
+    {input_utterance}
+    Please write the lists: (Don't write anything other than the lists themselves)
+    {output} </s>'''.format(
                 input_context=context,
                 input_utterance=f"sys: {turn['system_utterance']} \n usr: {turn['user_utterance']}",
                 output=output
             )
             train_data.append(text)
     train_data = Dataset.from_dict({"text": train_data})
+    return train_data
+
+
+def train(model_name, data_path, output_dir, eval_path, **kwargs):
+    eval_data = data_process(eval_path)
+    train_data = data_process(data_path)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         token=os.environ.get("HF_ACCESS_TOKEN"),
@@ -71,11 +77,11 @@ Please write the lists: (Don't write anything other than the lists themselves)
         learning_rate=1e-3,  # 学习率
         eval_steps=1000,  # 多少step进行一次评估
         save_steps=100,  # 多少step进行一次检查点保存
-        logging_steps=10,  # 多少step记录一次训练loss
+        logging_steps=100,  # 多少step记录一次训练loss
         evaluation_strategy="steps",
         group_by_length=False,
         # max_steps=max_steps, # 最大训练steps 和 num_train_epochs 二选一
-        num_train_epochs=10,  # 最大训练 epoch
+        num_train_epochs=100,  # 最大训练 epoch
         # 2. 节省显存参数
         gradient_accumulation_steps=32,  # 梯度累计
         gradient_checkpointing=True,  # 梯度检查点
@@ -92,12 +98,12 @@ Please write the lists: (Don't write anything other than the lists themselves)
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_data,
-        eval_dataset=train_data,
+        eval_dataset=eval_data,
         dataset_text_field="text",
         peft_config=peft_config,
         max_seq_length=2048,  # 序列的最大长度
         tokenizer=tokenizer,
-        args=training_arguments,
+        args=training_arguments
     )
     # 开启模型训练
     trainer.train(resume_from_checkpoint=True)
@@ -110,5 +116,6 @@ if __name__ == "__main__":
     load_dotenv(".env", verbose=True, override=True)
     train(model_name="meta-llama/Llama-2-7b-chat-hf",
           data_path="data/MultiWOZ_2.4_processed/train.json",
+          eval_path="data/MultiWOZ_2.4_processed/train.json",
           output_dir="checkpoints/"
           )
