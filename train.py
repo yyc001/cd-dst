@@ -3,7 +3,7 @@ import os
 
 import torch
 from dotenv import load_dotenv
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, AutoModelForSeq2SeqLM
 from datasets import Dataset
 from peft import LoraConfig, get_peft_model
 from trl import SFTTrainer
@@ -39,9 +39,8 @@ def data_process(data_path):
 
 
 def train(model_name, data_path, output_dir, eval_path, **kwargs):
-    eval_data = data_process(eval_path)
-    train_data = data_process(data_path)
-    model = AutoModelForCausalLM.from_pretrained(
+    # model = AutoModelForCausalLM.from_pretrained(AutoModelForSeq2SeqLM
+    model = AutoModelForSeq2SeqLM.from_pretrained(
         model_name,
         token=os.environ.get("HF_ACCESS_TOKEN"),
         cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
@@ -56,13 +55,19 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         trust_remote_code=True
     )
     tokenizer.pad_token_id = 0
-    # 'xxxx'即构造好的训练文本.
-    # data = [{'text': 'xxxx </s>'}, {'text': 'xxxx </s>'}, {'text': 'xxxx </s>'}, ...]
+
+    # import re
+    # pattern = r'\((\w+)\): Linear'
+    # linear_layers = re.findall(pattern, str(model.modules))
+    # target_modules = list(set(linear_layers))
+    # print(target_modules)
+    # exit(-1)
 
     peft_config = LoraConfig(
         r=16,
         lora_alpha=16,
-        target_modules=["gate_proj", "down_proj", "up_proj"],
+        # target_modules=["gate_proj", "down_proj", "up_proj"],
+        target_modules=["q", "k", "v"],
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM")
@@ -95,12 +100,15 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         warmup_steps=100,
     )
 
+    eval_data = data_process(eval_path)
+    train_data = data_process(data_path)
+
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_data,
         eval_dataset=eval_data,
         dataset_text_field="text",
-        # peft_config=peft_config,
+        peft_config=peft_config,
         max_seq_length=2048,  # 序列的最大长度
         tokenizer=tokenizer,
         args=training_arguments
