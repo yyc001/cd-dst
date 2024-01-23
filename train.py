@@ -100,7 +100,7 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         train_dataset=train_data,
         eval_dataset=eval_data,
         dataset_text_field="text",
-        peft_config=peft_config,
+        # peft_config=peft_config,
         max_seq_length=2048,  # 序列的最大长度
         tokenizer=tokenizer,
         args=training_arguments
@@ -114,8 +114,10 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
 
 if __name__ == "__main__":
     load_dotenv(".env", verbose=True, override=True)
-    train(model_name="meta-llama/Llama-2-7b-chat-hf",
-          data_path="data/MultiWOZ_2.4_processed/train.json",
-          eval_path="data/MultiWOZ_2.4_processed/train.json",
-          output_dir="checkpoints/"
-          )
+    train(
+        # model_name="meta-llama/Llama-2-7b-chat-hf",
+        model_name="google/flan-t5-xxl",
+        data_path="data/MultiWOZ_2.4_processed/train.json",
+        eval_path="data/MultiWOZ_2.4_processed/train.json",
+        output_dir="checkpoints-flan-t5-xxl/"
+    )
