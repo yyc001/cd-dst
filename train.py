@@ -126,6 +126,6 @@ if __name__ == "__main__":
         # model_name="meta-llama/Llama-2-7b-chat-hf",
         model_name="google/flan-t5-xxl",
         data_path="data/MultiWOZ_2.4_processed/train.json",
-        eval_path="data/MultiWOZ_2.4_processed/eval.json",
+        eval_path="data/MultiWOZ_2.4_processed/val.json",
         output_dir="checkpoints-flan-t5-xxl/"
     )
