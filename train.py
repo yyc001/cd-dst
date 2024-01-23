@@ -67,7 +67,7 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         r=16,
         lora_alpha=16,
         # target_modules=["gate_proj", "down_proj", "up_proj"],
-        target_modules=["q", "k", "v"],
+        target_modules=["q", "v"],
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM")
@@ -124,8 +124,8 @@ if __name__ == "__main__":
     load_dotenv(".env", verbose=True, override=True)
     train(
         # model_name="meta-llama/Llama-2-7b-chat-hf",
-        model_name="google/flan-t5-xxl",
+        model_name="google/flan-t5-small",
         data_path="data/MultiWOZ_2.4_processed/train.json",
         eval_path="data/MultiWOZ_2.4_processed/test.json",
-        output_dir="checkpoints-flan-t5-xxl/"
+        output_dir="checkpoints-flan-t5-small/"
     )
