@@ -114,7 +114,7 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         args=training_arguments
     )
     # 开启模型训练
-    trainer.train(resume_from_checkpoint=True)
+    trainer.train(resume_from_checkpoint=os.path.exists(output_dir))
     # 最终结果保存
     trainer.model.save_pretrained(output_dir)
     trainer.save_model()
