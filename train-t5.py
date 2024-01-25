@@ -1,11 +1,13 @@
 import json
 import os
 
+import torch
 # import nltk
 # import evaluate
 # import numpy as np
 from datasets import Dataset
 from dotenv import load_dotenv
+from peft import LoraConfig, get_peft_model
 from transformers import T5Tokenizer, DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 # import sentencepiece
@@ -22,8 +24,19 @@ tokenizer = T5Tokenizer.from_pretrained(
 )
 model = T5ForConditionalGeneration.from_pretrained(
     MODEL_NAME,
-    cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+    cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+    torch_dtype=torch.float16,
 )
+peft_config = LoraConfig(
+    r=16,
+    lora_alpha=16,
+    # target_modules=["gate_proj", "down_proj", "up_proj"],
+    target_modules=["q", "v"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM")
+model = get_peft_model(model, peft_config)
+
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
 
