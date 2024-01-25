@@ -1,18 +1,29 @@
 import json
+import os
 
 # import nltk
 # import evaluate
 # import numpy as np
 from datasets import Dataset
+from dotenv import load_dotenv
 from transformers import T5Tokenizer, DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 # import sentencepiece
 
+load_dotenv(".env", verbose=True, override=True)
+
+
 # Load the tokenizer, model, and data collator
 MODEL_NAME = "google/flan-t5-xxl"
 
-tokenizer = T5Tokenizer.from_pretrained(MODEL_NAME)
-model = T5ForConditionalGeneration.from_pretrained(MODEL_NAME)
+tokenizer = T5Tokenizer.from_pretrained(
+    MODEL_NAME,
+    cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+)
+model = T5ForConditionalGeneration.from_pretrained(
+    MODEL_NAME,
+    cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+)
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
 
