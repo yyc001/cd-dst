@@ -7,8 +7,8 @@ import torch
 # import numpy as np
 from datasets import Dataset
 from dotenv import load_dotenv
-from peft import LoraConfig, get_peft_model, TaskType
-from transformers import T5Tokenizer, DataCollatorForSeq2Seq
+from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_int8_training
+from transformers import T5Tokenizer, DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 # import sentencepiece
 
@@ -22,21 +22,28 @@ tokenizer = T5Tokenizer.from_pretrained(
     MODEL_NAME,
     cache_dir=os.environ.get("TRANSFORMERS_CACHE")
 )
-model = T5ForConditionalGeneration.from_pretrained(
+model = AutoModelForSeq2SeqLM.from_pretrained(
     MODEL_NAME,
     cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
     torch_dtype=torch.float16,
+    load_in_8bit=True,
+    device_map="auto"
 )
-peft_config = LoraConfig(
-    r=16,
-    lora_alpha=16,
-    # target_modules=["gate_proj", "down_proj", "up_proj"],
-    target_modules=["q", "v"],
-    lora_dropout=0.05,
-    bias="none",
-    task_type=TaskType.SEQ_2_SEQ_LM
+# Define LoRA Config
+lora_config = LoraConfig(
+ r=16,
+ lora_alpha=32,
+ target_modules=["q", "v"],
+ lora_dropout=0.05,
+ bias="none",
+ task_type=TaskType.SEQ_2_SEQ_LM
 )
-model = get_peft_model(model, peft_config)
+# prepare int-8 model for training
+model = prepare_model_for_int8_training(model)
+
+# add LoRA adaptor
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
 
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
