@@ -107,7 +107,7 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         model=model,
         train_dataset=train_data,
         eval_dataset=eval_data,
-        dataset_text_field="text",
+        # dataset_text_field="text",
         peft_config=peft_config,
         max_seq_length=2048,  # 序列的最大长度
         tokenizer=tokenizer,
