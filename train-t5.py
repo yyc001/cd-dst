@@ -151,4 +151,6 @@ trainer = Seq2SeqTrainer(
     # compute_metrics=compute_metrics
 )
 
-trainer.train()
+trainer.train(resume_from_checkpoint=True)
+
+trainer.model.save_pretrained("./results")
