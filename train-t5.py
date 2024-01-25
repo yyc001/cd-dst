@@ -7,7 +7,7 @@ import torch
 # import numpy as np
 from datasets import Dataset
 from dotenv import load_dotenv
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, TaskType
 from transformers import T5Tokenizer, DataCollatorForSeq2Seq
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 # import sentencepiece
@@ -34,7 +34,8 @@ peft_config = LoraConfig(
     target_modules=["q", "v"],
     lora_dropout=0.05,
     bias="none",
-    task_type="CAUSAL_LM")
+    task_type=TaskType.SEQ_2_SEQ_LM
+)
 model = get_peft_model(model, peft_config)
 
 data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
