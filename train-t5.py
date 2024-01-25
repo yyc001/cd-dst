@@ -9,7 +9,7 @@ from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, S
 # import sentencepiece
 
 # Load the tokenizer, model, and data collator
-MODEL_NAME = "google/flan-t5-base"
+MODEL_NAME = "google/flan-t5-xxl"
 
 tokenizer = T5Tokenizer.from_pretrained(MODEL_NAME)
 model = T5ForConditionalGeneration.from_pretrained(MODEL_NAME)
