@@ -209,14 +209,21 @@ class T5AdapterModel(InferenceModel):
         super().__init__(**kwargs)
         import torch
         from transformers import T5Tokenizer, T5ForConditionalGeneration
-        self.model = T5ForConditionalGeneration.from_pretrained(
+        from peft import PeftModel
+        model = T5ForConditionalGeneration.from_pretrained(
             hf_model,
             cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
             # load_in_4bit=True,
             torch_dtype=torch.float16,
             device_map='auto',
+            load_in_8bit=True,
         )
-        self.model.load_adapter(adapter_path)
+        self.model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+            device_map="auto"
+        )
+        self.model.eval()
         self.tokenizer = T5Tokenizer.from_pretrained(
             hf_model,
             cache_dir=os.environ.get("TRANSFORMERS_CACHE")
