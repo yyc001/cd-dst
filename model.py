@@ -15,7 +15,8 @@ def load_model(model_config: dict) -> InferenceModel:
         "gpt-3.5-turbo": ChatGPTModel,
         "flan-t5-xxl": FlanT5Model,
         "llama-h": LlamaHModel,
-        "tuned-llama": LlamaAdapterModel
+        "tuned-llama": LlamaAdapterModel,
+        "tuned-t5": T5AdapterModel
     }
     return models[model_config['name']](**model_config)
 
@@ -200,4 +201,37 @@ class LlamaAdapterModel(InferenceModel):
         output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         output = output[len(input_text):]
         # output = self.pipe(input_text)[0]['generated_text'][len(input_text):]
+        return output
+
+
+class T5AdapterModel(InferenceModel):
+    def __init__(self, hf_model, adapter_path, **kwargs):
+        super().__init__(**kwargs)
+        import torch
+        from transformers import T5Tokenizer, T5ForConditionalGeneration
+        self.model = T5ForConditionalGeneration.from_pretrained(
+            hf_model,
+            cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+            # load_in_4bit=True,
+            torch_dtype=torch.float16,
+            device_map='auto',
+        )
+        self.model.load_adapter(adapter_path)
+        self.tokenizer = T5Tokenizer.from_pretrained(
+            hf_model,
+            cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+        )
+
+    def generate(self, input_text):
+        input_ids = self.tokenizer(
+            input_text,
+            max_length=2048,
+            return_tensors="pt"
+        ).input_ids.to("cuda")
+
+        outputs = self.model.generate(
+            input_ids,
+            max_length=128
+        )
+        output = self.tokenizer.decode(outputs[0][1:-1])
         return output
