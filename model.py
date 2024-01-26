@@ -237,8 +237,8 @@ class T5AdapterModel(InferenceModel):
         ).input_ids.to("cuda")
 
         outputs = self.model.generate(
-            input_ids,
-            max_length=128
+            input_ids=input_ids,
+            max_new_tokens=128,
         )
         output = self.tokenizer.decode(outputs[0][1:-1])
         return output
