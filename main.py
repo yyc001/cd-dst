@@ -6,7 +6,7 @@ import torch
 
 from tqdm import tqdm
 
-from evaluate import Evaluator
+from evaluator import Evaluator
 from dotenv import load_dotenv
 from model import load_model
 from prompter import SingleReturnPrompter
