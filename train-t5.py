@@ -125,7 +125,7 @@ BATCH_SIZE = 8
 PER_DEVICE_EVAL_BATCH = 4
 WEIGHT_DECAY = 0.01
 SAVE_TOTAL_LIM = 3
-NUM_EPOCHS = 3
+NUM_EPOCHS = 30
 
 # Set up training arguments
 training_args = Seq2SeqTrainingArguments(
