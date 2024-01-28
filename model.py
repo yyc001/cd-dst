@@ -1,4 +1,7 @@
 import os
+from types import MethodType
+
+from transformers import LogitsProcessorList
 
 
 class InferenceModel:
@@ -16,7 +19,8 @@ def load_model(model_config: dict) -> InferenceModel:
         "flan-t5-xxl": FlanT5Model,
         "llama-h": LlamaHModel,
         "tuned-llama": LlamaAdapterModel,
-        "tuned-t5": T5AdapterModel
+        "tuned-t5": T5AdapterModel,
+        "llama-2-contra": PromptContraLLaMaModel,
     }
     return models[model_config['name']](**model_config)
 
@@ -36,6 +40,30 @@ class LLaMaModel(InferenceModel):
         output = self.model.chat_completion(
             [
                 [{"role": "user", "content": prompt}],
+            ],
+            max_gen_len=128,
+            temperature=0.2,
+            top_p=0.9,
+        )[0]['generation']['content']
+        return output
+
+
+class PromptContraLLaMaModel(InferenceModel):
+    def __init__(self, model_path, tokenizer, **kwargs):
+        super().__init__()
+        from contra_llama import PromptContraDecodeLlama
+        self.model = PromptContraDecodeLlama.build(
+            ckpt_dir=model_path,
+            tokenizer_path=tokenizer,
+            max_seq_len=2048,
+            max_batch_size=4,
+        )
+
+    def generate(self, prompt):
+        output = self.model.chat_completion(
+            [
+                [{"role": "user", "content": prompt}],
+                [{"role": "user", "content": prompt[prompt.find("Contexts:"):]}],
             ],
             max_gen_len=128,
             temperature=0.2,
@@ -241,4 +269,58 @@ class T5AdapterModel(InferenceModel):
             max_new_tokens=128,
         )
         output = self.tokenizer.decode(outputs[0][1:-1])
+        return output
+
+
+def load_config(hf_model, adapter_path):
+    import torch
+    from transformers import AutoModel
+    from peft import PeftModel
+    model = AutoModel.from_pretrained(
+        hf_model,
+        cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+        token=os.environ.get("HF_ACCESS_TOKEN"),
+        # load_in_4bit=True,
+        torch_dtype=torch.float16,
+        device_map='auto',
+        load_in_8bit=True
+    )
+    if adapter_path:
+        model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+            device_map="auto"
+        )
+    return model
+
+
+class PromptContraModel(InferenceModel):
+    def __init__(self, hf_model, adapter_path, **kwargs):
+        super().__init__(**kwargs)
+        from transformers import AutoTokenizer
+        self.model = load_config(hf_model, adapter_path)
+        self.model.eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            hf_model,
+            cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+        )
+
+    def generate(self, input_text: str):
+        input_ids = self.tokenizer(
+            [
+                input_text,
+                input_text[input_text.find("Contexts:"):]
+            ],
+            max_length=2048,
+            return_tensors="pt"
+        ).input_ids.to("cuda")
+
+        outputs = self.model.generate(
+            input_ids=input_ids,
+            max_new_tokens=128,
+            logits_processor=LogitsProcessorList(
+
+            )
+        )
+        output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return output

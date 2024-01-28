@@ -1,0 +1,5 @@
+{
+  "name": "llama-2-contra",
+  "model_path": "../llama/llama-2-7b-chat/",
+  "tokenizer": "../llama/tokenizer.model"
+}
