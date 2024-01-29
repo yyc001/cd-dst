@@ -37,3 +37,13 @@ class EnsembleLogitsProcessor(LogitsProcessor):
             scores = torch.nan_to_num(scores, nan=float('-inf'))
 
         return scores
+
+
+class ContraLogitsProcessor(LogitsProcessor):
+
+    def __init__(self, amateur_model):
+        self.amateur_model = amateur_model
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+
+        pass
