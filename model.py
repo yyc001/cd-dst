@@ -21,6 +21,7 @@ def load_model(model_config: dict) -> InferenceModel:
         "tuned-llama": LlamaAdapterModel,
         "tuned-t5": T5AdapterModel,
         "llama-2-contra": PromptContraLLaMaModel,
+        "flan-t5-contra": ContraModel
     }
     return models[model_config['name']](**model_config)
 
@@ -321,6 +322,38 @@ class PromptContraModel(InferenceModel):
             logits_processor=LogitsProcessorList(
 
             )
+        )
+        output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return output
+
+
+class ContraModel(InferenceModel):
+    def __init__(self, expert_model, expert_adapter, amateur_model, amateur_adapter, student_cf, student_th, **kwargs):
+        super().__init__(**kwargs)
+        import torch
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+        self.expert = load_config(expert_model, expert_adapter)
+        self.amateur = load_config(amateur_model, amateur_adapter)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            expert_model
+        )
+        self.student_cf = student_cf
+        self.student_th = student_th
+
+    def generate(self, input_text):
+        input_ids = self.tokenizer(
+            input_text,
+            max_length=2048,
+            return_tensors="pt"
+        ).input_ids.to("cuda")
+
+        outputs = self.expert.generate(
+            input_ids,
+            max_length=128,
+            num_beams=2,
+            student_lm=self.amateur,
+            student_th=self.student_th,
+            student_cf=self.student_cf,
         )
         output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return output

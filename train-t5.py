@@ -135,7 +135,7 @@ training_args = Seq2SeqTrainingArguments(
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=PER_DEVICE_EVAL_BATCH,
     weight_decay=WEIGHT_DECAY,
-    save_total_limit=SAVE_TOTAL_LIM,
+    # save_total_limit=SAVE_TOTAL_LIM,
     num_train_epochs=NUM_EPOCHS,
     predict_with_generate=True,
     push_to_hub=False
@@ -151,6 +151,6 @@ trainer = Seq2SeqTrainer(
     # compute_metrics=compute_metrics
 )
 
-trainer.train(resume_from_checkpoint=True)
+trainer.train()
 
 trainer.model.save_pretrained("./results")
