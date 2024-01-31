@@ -349,7 +349,7 @@ class ContraModel(InferenceModel):
         ).input_ids.to("cuda")
 
         outputs = self.expert.generate(
-            input_ids,
+            input_ids=input_ids,
             max_length=128,
             num_beams=2,
             student_lm=self.amateur,
