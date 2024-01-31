@@ -273,11 +273,10 @@ class T5AdapterModel(InferenceModel):
         return output
 
 
-def load_config(hf_model, adapter_path):
+def load_config(hf_model, adapter_path, model_class):
     import torch
-    from transformers import AutoModel
     from peft import PeftModel
-    model = AutoModel.from_pretrained(
+    model = model_class.from_pretrained(
         hf_model,
         cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
         token=os.environ.get("HF_ACCESS_TOKEN"),
@@ -331,9 +330,9 @@ class ContraModel(InferenceModel):
     def __init__(self, expert_model, expert_adapter, amateur_model, amateur_adapter, student_cf, student_th, **kwargs):
         super().__init__(**kwargs)
         import torch
-        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-        self.expert = load_config(expert_model, expert_adapter)
-        self.amateur = load_config(amateur_model, amateur_adapter)
+        from transformers import AutoTokenizer, T5ForConditionalGeneration
+        self.expert = load_config(expert_model, expert_adapter, T5ForConditionalGeneration)
+        self.amateur = load_config(amateur_model, amateur_adapter, T5ForConditionalGeneration)
         self.tokenizer = AutoTokenizer.from_pretrained(
             expert_model,
             cache_dir=os.environ.get("TRANSFORMERS_CACHE")
