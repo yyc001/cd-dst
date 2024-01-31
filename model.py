@@ -281,10 +281,10 @@ def load_config(hf_model, adapter_path):
         hf_model,
         cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
         token=os.environ.get("HF_ACCESS_TOKEN"),
-        # load_in_4bit=True,
+        load_in_4bit=True,
         torch_dtype=torch.float16,
         device_map='auto',
-        load_in_8bit=True
+        # load_in_8bit=True
     )
     if adapter_path:
         model = PeftModel.from_pretrained(
