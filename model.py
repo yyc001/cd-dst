@@ -335,7 +335,8 @@ class ContraModel(InferenceModel):
         self.expert = load_config(expert_model, expert_adapter)
         self.amateur = load_config(amateur_model, amateur_adapter)
         self.tokenizer = AutoTokenizer.from_pretrained(
-            expert_model
+            expert_model,
+            cache_dir=os.environ.get("TRANSFORMERS_CACHE")
         )
         self.student_cf = student_cf
         self.student_th = student_th
