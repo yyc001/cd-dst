@@ -21,7 +21,7 @@ def load_model(model_config: dict) -> InferenceModel:
         "tuned-llama": LlamaAdapterModel,
         "tuned-t5": T5AdapterModel,
         "llama-2-contra": PromptContraLLaMaModel,
-        "flan-t5-contra": ContraModel
+        "contra-decode": ContraModel
     }
     return models[model_config['name']](**model_config)
 
