@@ -278,7 +278,7 @@ def load_config(hf_model, adapter_path, model_class):
     from peft import PeftModel
     model = model_class.from_pretrained(
         hf_model,
-        cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+        # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
         token=os.environ.get("HF_ACCESS_TOKEN"),
         # load_in_4bit=True,
         torch_dtype=torch.float16,
@@ -327,33 +327,84 @@ class PromptContraModel(InferenceModel):
 
 
 class ContraModel(InferenceModel):
-    def __init__(self, expert_model, expert_adapter, amateur_model, amateur_adapter, student_cf, student_th, **kwargs):
+    def __init__(self,
+                 expert_model, expert_adapter, amateur_model, amateur_adapter,
+                 amateur_scale, expert_logc, **kwargs):
         super().__init__(**kwargs)
-        import torch
-        from transformers import AutoTokenizer, T5ForConditionalGeneration
-        self.expert = load_config(expert_model, expert_adapter, T5ForConditionalGeneration)
-        self.amateur = load_config(amateur_model, amateur_adapter, T5ForConditionalGeneration)
+        from transformers import AutoTokenizer, AutoModel
+        self.expert = load_config(expert_model, expert_adapter, AutoModel)
+        self.amateur = load_config(amateur_model, amateur_adapter, AutoModel)
         self.tokenizer = AutoTokenizer.from_pretrained(
             expert_model,
-            cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE")
         )
-        self.student_cf = student_cf
-        self.student_th = student_th
+        self.amateur_scale = amateur_scale
+        self.expert_logc = expert_logc
 
-    def generate(self, input_text):
-        input_ids = self.tokenizer(
+    def prepare_inputs_and_kwargs(self, model, input_ids):
+        model_kwargs = {}
+        inputs_tensor, model_input_name, model_kwargs = model._prepare_model_inputs(
+            input_ids, self.tokenizer.bos_token_id, model_kwargs
+        )
+        if model.config.is_encoder_decoder:
+            model_kwargs = model._prepare_encoder_decoder_kwargs_for_generation(
+                inputs_tensor, model_kwargs, model_input_name
+            )
+            input_ids, model_kwargs = model._prepare_decoder_input_ids_for_generation(
+                batch_size=inputs_tensor.shape[0],
+                model_input_name=model_input_name,
+                model_kwargs=model_kwargs,
+            )
+        return input_ids, model_kwargs
+
+    def generate(self, input_text, max_length=20):
+        import torch
+        inputs = self.tokenizer(
             input_text,
             max_length=2048,
             return_tensors="pt"
-        ).input_ids.to("cuda")
+        ).input_ids
+        input_ids, model_kwargs_expert = self.prepare_inputs_and_kwargs(self.expert, inputs)
+        input_ids2, model_kwargs_amateur = self.prepare_inputs_and_kwargs(self.amateur, inputs)
+        assert input_ids == input_ids2
+        with torch.no_grad():
+            while input_ids.shape[-1] < max_length:
+                model_inputs_expert = self.expert.prepare_inputs_for_generation(input_ids, **model_kwargs_expert)
+                outputs_expert = self.expert(
+                    **model_inputs_expert,
+                    return_dict=True,
+                    output_attentions=False,
+                    output_hidden_states=False,
+                )
+                model_inputs_amateur = self.amateur.prepare_inputs_for_generation(input_ids, **model_kwargs_amateur)
+                outputs_amateur = self.expert(
+                    **model_inputs_amateur,
+                    return_dict=True,
+                    output_attentions=False,
+                    output_hidden_states=False,
+                )
 
-        outputs = self.expert.generate(
-            input_ids=input_ids,
-            max_length=128,
-            num_beams=2,
-            student_lm=self.amateur,
-            student_th=self.student_th,
-            student_cf=self.student_cf,
-        )
-        output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                logits_expert = outputs_expert.logits[:, -1, :]
+                logits_amateur = outputs_amateur.logits[:, -1, :]
+                logp_expert = logits_expert.log_softmax(dim=-1)
+                logp_amateur = logits_amateur.log_softmax(dim=-1)
+                next_tokens_scores = logp_expert - self.amateur_scale * logp_amateur
+                next_tokens_scores[
+                    logp_expert < self.expert_logc + torch.max(logp_expert, dim=0)[0]
+                    ] = float("-inf")
+
+                next_tokens = torch.argmax(next_tokens_scores, dim=-1)
+                input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
+                model_kwargs_expert = self.expert._update_model_kwargs_for_generation(
+                    outputs_expert, model_kwargs_expert, is_encoder_decoder=self.expert.config.is_encoder_decoder
+                )
+                model_kwargs_amateur = self.amateur._update_model_kwargs_for_generation(
+                    outputs_amateur, model_kwargs_amateur, is_encoder_decoder=self.amateur.config.is_encoder_decoder
+                )
+
+                if next_tokens[0] == self.tokenizer.eos_token_id:
+                    break
+
+        output = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         return output
+
