@@ -275,7 +275,6 @@ class T5AdapterModel(InferenceModel):
 
 def load_config(hf_model, adapter_path, model_class):
     import torch
-    from peft import PeftModel
     model = model_class.from_pretrained(
         hf_model,
         # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
@@ -286,6 +285,7 @@ def load_config(hf_model, adapter_path, model_class):
         load_in_8bit=True
     )
     if adapter_path:
+        from peft import PeftModel
         model = PeftModel.from_pretrained(
             model,
             adapter_path,
@@ -329,11 +329,13 @@ class PromptContraModel(InferenceModel):
 class ContraModel(InferenceModel):
     def __init__(self,
                  expert_model, expert_adapter, amateur_model, amateur_adapter,
-                 amateur_scale, expert_logc, **kwargs):
+                 amateur_scale, expert_logc, model_class, **kwargs):
         super().__init__(**kwargs)
+        import transformers
         from transformers import AutoTokenizer, AutoModel
-        self.expert = load_config(expert_model, expert_adapter, AutoModel)
-        self.amateur = load_config(amateur_model, amateur_adapter, AutoModel)
+        model_class = eval(model_class) if model_class else AutoModel
+        self.expert = load_config(expert_model, expert_adapter, model_class)
+        self.amateur = load_config(amateur_model, amateur_adapter, model_class)
         self.tokenizer = AutoTokenizer.from_pretrained(
             expert_model,
             # cache_dir=os.environ.get("TRANSFORMERS_CACHE")
@@ -357,7 +359,7 @@ class ContraModel(InferenceModel):
             )
         return input_ids, model_kwargs
 
-    def generate(self, input_text, max_length=20):
+    def generate(self, input_text, max_length=128):
         import torch
         inputs = self.tokenizer(
             input_text,
@@ -366,7 +368,8 @@ class ContraModel(InferenceModel):
         ).input_ids
         input_ids, model_kwargs_expert = self.prepare_inputs_and_kwargs(self.expert, inputs)
         input_ids2, model_kwargs_amateur = self.prepare_inputs_and_kwargs(self.amateur, inputs)
-        assert input_ids == input_ids2
+        # print(input_ids, input_ids2)
+        assert input_ids.equal(input_ids2)
         with torch.no_grad():
             while input_ids.shape[-1] < max_length:
                 model_inputs_expert = self.expert.prepare_inputs_for_generation(input_ids, **model_kwargs_expert)
@@ -389,8 +392,11 @@ class ContraModel(InferenceModel):
                 logp_expert = logits_expert.log_softmax(dim=-1)
                 logp_amateur = logits_amateur.log_softmax(dim=-1)
                 next_tokens_scores = logp_expert - self.amateur_scale * logp_amateur
+                # print(logp_expert.shape)
+                # print(torch.max(logp_expert, dim=-1))
+                # exit(0)
                 next_tokens_scores[
-                    logp_expert < self.expert_logc + torch.max(logp_expert, dim=0)[0]
+                    logp_expert < torch.max(logp_expert, dim=-1).values + self.expert_logc
                     ] = float("-inf")
 
                 next_tokens = torch.argmax(next_tokens_scores, dim=-1)

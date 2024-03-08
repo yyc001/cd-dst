@@ -95,6 +95,8 @@ Please write the lists: (Don't write anything other than the lists themselves)
             sv_str = sv_str.split(";")
         elif "*" in sv_str:
             sv_str = sv_str.split("*")
+        else:
+            sv_str = [sv_str]
         preds = {}
         for sv in sv_str:
             if "=" not in sv or len(sv.split("=")) != 2:

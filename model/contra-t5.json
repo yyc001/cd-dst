@@ -5,6 +5,7 @@
   "expert_adapter": "results/checkpoint-48500",
   "amateur_model": "google/flan-t5-xxl",
   "amateur_adapter":  "results/",
-  "student_cf": 1,
-  "student_th": 0.1
+  "amateur_scale": 1.0,
+  "expert_logc": -2.3,
+  "model_class": "transformers.T5ForConditionalGeneration"
 }
