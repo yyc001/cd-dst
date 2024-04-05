@@ -21,7 +21,8 @@ def load_model(model_config: dict) -> InferenceModel:
         "tuned-llama": LlamaAdapterModel,
         "tuned-t5": T5AdapterModel,
         "llama-2-contra": PromptContraLLaMaModel,
-        "contra-decode": ContraModel
+        "contra-decode": ContraModel,
+        "Mistral-7B": MistralModel
     }
     return models[model_config['name']](**model_config)
 
@@ -282,7 +283,7 @@ def load_config(hf_model, adapter_path, model_class):
         # load_in_4bit=True,
         torch_dtype=torch.float16,
         device_map='auto',
-        load_in_8bit=True
+        # load_in_8bit=True
     )
     if adapter_path:
         from peft import PeftModel
@@ -414,3 +415,30 @@ class ContraModel(InferenceModel):
         output = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         return output
 
+
+class MistralModel(InferenceModel):
+    def __init__(self, hf_model, adapter_path, **kwargs):
+        super().__init__(**kwargs)
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+        self.model = load_config(hf_model, adapter_path, AutoModelForCausalLM)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            hf_model,
+        )
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+
+    def generate(self, input_text):
+        input_ids = self.tokenizer(
+            input_text,
+            max_length=2048,
+            return_tensors="pt"
+        )
+        outputs = self.model.generate(
+            input_ids.input_ids,
+            pad_token_id=self.tokenizer.eos_token_id,
+            max_new_tokens=128
+        )
+        output = self.tokenizer.decode(outputs[0])
+        print("------------------------------------------")
+        print(output)
+        output = output[len(input_text):]
+        return output

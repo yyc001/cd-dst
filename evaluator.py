@@ -23,9 +23,12 @@ class Evaluator:
 
         for index, dialogue in data.items():
             context = ""
+            # print("!!!!!!!!!!!")
             for i in range(len(dialogue)):
+                # print("#############", dialogue[i]["active_state"], predicted[index][i]["active_state"], dialogue[i]["state"])
+
                 context += " " + dialogue[i]["system_utterance"] + " " + dialogue[i]["user_utterance"]
-                result = self.compare_state(dialogue[i]["active_state"], predicted[index][i]["active_state"], context)
+                result = self.compare_state(dialogue[i]["state"], predicted[index][i]["state"], context)
                 correct_turn_num += result["correct_turn_num"]
                 correct_sv_num += result["correct_sv_num"]
                 correct_svb_num += result["correct_svb_num"]
@@ -41,8 +44,8 @@ class Evaluator:
             "Joint Goal Accuracy": correct_turn_num / turn_num,
             "Active Slot Accuracy": correct_sv_num / sv_num,
             "Total Slot Accuracy": correct_svb_num / turn_num / 37,
-            "Strict Hallucination Rate": strict_hallucination_num / predicted_sv_num,
-            "Soft Hallucination Rate": soft_hallucination_num / predicted_sv_num
+            "Strict Hallucination Rate": strict_hallucination_num / predicted_sv_num / 2,
+            "Soft Hallucination Rate": soft_hallucination_num / predicted_sv_num / 2
         }
 
     def compare_state(self, ground_truth, predicted, context):

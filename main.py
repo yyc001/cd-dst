@@ -77,8 +77,12 @@ def evaluate_process(data_path, output_file, reparse, **kwargs):
         predicted_new = predicted
         prompter = SingleReturnPrompter()
         for index, dialog in tqdm(predicted.items()):
+            full_state = {}
             for i in range(len(dialog)):
-                predicted_new[index][i]['active_state'] = prompter.get_response(dialog[i]['output'])
+                active_state = prompter.get_response(dialog[i]['output'])
+                predicted_new[index][i]['active_state'] = active_state
+                full_state.update(active_state)
+                predicted_new[index][i]['state'] = full_state.copy()
         predicted = predicted_new
         json.dump(predicted, open(output_file, "w"), indent=2)
 

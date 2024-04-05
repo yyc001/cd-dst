@@ -5,6 +5,11 @@ import re
 class SingleReturnPrompter:
     def __init__(self):
         self.ontology = json.load(open("ontology.json"))
+        self.short_prompt_template = """
+'<s>[INST] Contexts: {input_context}
+Dialogue:
+{input_utterance}
+Please write the lists: (Don't write anything other than the lists themselves)[/INST]"""
         self.prompt_template = """
 I present you with some databases together with one example item and value constraints
 
@@ -66,7 +71,7 @@ Dialogue:
 {input_utterance}
 Please write the lists: (Don't write anything other than the lists themselves)
 """
-
+    
     def generate_prompt(self, system_uttr, user_uttr, last_state):
         if system_uttr == "":
             context = "This is the first turn"
@@ -75,7 +80,7 @@ Please write the lists: (Don't write anything other than the lists themselves)
                 [f"{k}={v}" for k, v in last_state.items()]
             )
         # context = ""
-        return self.prompt_template.format(
+        return self.short_prompt_template.format(
             input_context=context,
             input_utterance=f"sys: {system_uttr} \n usr: {user_uttr}"
         )
