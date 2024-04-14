@@ -5,11 +5,11 @@ import re
 class SingleReturnPrompter:
     def __init__(self):
         self.ontology = json.load(open("ontology.json"))
-        self.short_prompt_template = """
-'<s>[INST] Contexts: {input_context}
+        self.short_prompt_template = """Contexts: {input_context}
 Dialogue:
 {input_utterance}
-Please write the lists: (Don't write anything other than the lists themselves)[/INST]"""
+Please write the lists: (Don't write anything other than the lists themselves)
+"""
         self.prompt_template = """
 I present you with some databases together with one example item and value constraints
 

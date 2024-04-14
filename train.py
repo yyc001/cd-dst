@@ -26,10 +26,10 @@ def data_process(data_path):
                 )
             else:
                 output = "No column informed"
-            text = '''<s>[INST] Contexts: {input_context}
+            text = '''Contexts: {input_context}
 Dialogue:
 {input_utterance}
-Please write the lists: (Don't write anything other than the lists themselves)[/INST]
+Please write the lists: (Don't write anything other than the lists themselves)
 {output} </s>'''.format(
                 input_context=context,
                 input_utterance=f"sys: {turn['system_utterance']} \n usr: {turn['user_utterance']}",
@@ -58,10 +58,10 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         model_name,
         token=os.environ.get("HF_ACCESS_TOKEN"),
         # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
-        quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True,
-        ),
-        torch_dtype=torch.float16,
+        # quantization_config=BitsAndBytesConfig(
+        #     load_in_8bit=True,
+        # ),
+        torch_dtype=torch.bfloat16,
         device_map=device_map,
     )
     # if not ddp and torch.cuda.device_count() > 1:
@@ -75,7 +75,11 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         token=os.environ.get("HF_ACCESS_TOKEN"),
         trust_remote_code=True
     )
-    tokenizer.pad_token_id = tokenizer.eos_token_id
+    # print(tokenizer.bos_token, tokenizer.eos_token, tokenizer.pad_token)
+    # print(tokenizer.bos_token_id, tokenizer.eos_token_id, tokenizer.pad_token_id)
+    # exit(-1)
+    tokenizer.pad_token_id = 0 
+    tokenizer.padding_side = "left"
 
     # import re
     # pattern = r'\((\w+)\): Linear'
@@ -102,13 +106,13 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
         per_device_train_batch_size=4,  # 单卡batchsize
         optim="adamw_torch",  # 优化器名称
         learning_rate=1e-3,  # 学习率
-        eval_steps=1000,  # 多少step进行一次评估
+        eval_steps=100,  # 多少step进行一次评估
         save_steps=100,  # 多少step进行一次检查点保存
         logging_steps=100,  # 多少step记录一次训练loss
         evaluation_strategy="steps",
         group_by_length=False,
         # max_steps=max_steps, # 最大训练steps 和 num_train_epochs 二选一
-        num_train_epochs=100,  # 最大训练 epoch
+        num_train_epochs=10,  # 最大训练 epoch
         # 2. 节省显存参数
         gradient_accumulation_steps=4,  # 梯度累计
         # gradient_checkpointing=True,  # 梯度检查点
@@ -143,9 +147,9 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
             # print(outputs)
             # exit(0)
             loss = outputs["loss"]
-            # print(loss)
+            print(loss)
             return (loss, outputs) if return_outputs else loss
-    trainer = MyTrainer(
+    trainer = SFTTrainer(
         model=model,
         train_dataset=train_data,
         eval_dataset=eval_data,
@@ -166,10 +170,10 @@ def train(model_name, data_path, output_dir, eval_path, **kwargs):
 if __name__ == "__main__":
     # notebook_laucher
     train(
-        # model_name="meta-llama/Llama-2-7b-chat-hf",
-        model_name="mistralai/Mistral-7B-Instruct-v0.2",
+        model_name="meta-llama/Llama-2-7b-hf",
+        # model_name="mistralai/Mistral-7B-Instruct-v0.2",
         data_path="data/MultiWOZ_2.4_processed/train.json",
         eval_path="data/MultiWOZ_2.4_processed/test.json",
-        # output_dir="checkpoints-Llama-2-7b-chat-hf/"
-        output_dir="checkpoints-Mistral-7B-Instruct-v0.2-1/"
+        output_dir="checkpoints/Llama-2-7b-hf/"
+        # output_dir="checkpoints-Mistral-7B-Instruct-v0.2-1/"
     )

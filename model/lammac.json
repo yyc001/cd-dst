@@ -1,0 +1,5 @@
+{
+  "name": "tuned-llama",
+  "hf_model": "meta-llama/Llama-2-7b-hf",
+  "adapter_path": "checkpoints/Llama-2-7b-hf"
+}

@@ -1,5 +1,5 @@
 {
   "name": "tuned-llama",
   "hf_model": "meta-llama/Llama-2-7b-chat-hf",
-  "adapter_path": "checkpoints/"
+  "adapter_path": "checkpoints/Llama-2-7b-chat-hf/checkpoint-500"
 }

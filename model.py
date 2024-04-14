@@ -22,7 +22,8 @@ def load_model(model_config: dict) -> InferenceModel:
         "tuned-t5": T5AdapterModel,
         "llama-2-contra": PromptContraLLaMaModel,
         "contra-decode": ContraModel,
-        "Mistral-7B": MistralModel
+        "Mistral-7B": MistralModel,
+        "SCDModel": SCDModel,
     }
     return models[model_config['name']](**model_config)
 
@@ -205,18 +206,24 @@ class LlamaAdapterModel(InferenceModel):
         self.model = LlamaForCausalLM.from_pretrained(
             hf_model,
             token=os.environ.get("HF_ACCESS_TOKEN"),
-            cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
             # load_in_4bit=True,
-            torch_dtype=torch.float16,
+            torch_dtype=torch.bfloat16,
             device_map='auto',
         )
+        self.model.config.pad_token_id = 0
+        self.model.config.bos_token_id = 1
+        self.model.config.eos_token_id = 2
+        
         self.model.load_adapter(adapter_path)
         self.tokenizer = LlamaTokenizer.from_pretrained(
             hf_model,
-            cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
             token=os.environ.get("HF_ACCESS_TOKEN"),
             trust_remote_code=True
         )
+        self.tokenizer.pad_token_id = 0 
+        self.tokenizer.padding_side = "left"
 
     def generate(self, input_text):
         input_ids = self.tokenizer(
@@ -229,6 +236,7 @@ class LlamaAdapterModel(InferenceModel):
             max_new_tokens=128
         )
         output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # print(output)
         output = output[len(input_text):]
         # output = self.pipe(input_text)[0]['generated_text'][len(input_text):]
         return output
@@ -281,7 +289,7 @@ def load_config(hf_model, adapter_path, model_class):
         # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
         token=os.environ.get("HF_ACCESS_TOKEN"),
         # load_in_4bit=True,
-        torch_dtype=torch.float16,
+        torch_dtype=torch.bfloat16,
         device_map='auto',
         # load_in_8bit=True
     )
@@ -441,4 +449,95 @@ class MistralModel(InferenceModel):
         print("------------------------------------------")
         print(output)
         output = output[len(input_text):]
+        return output
+
+
+class SCDModel(InferenceModel):
+    def __init__(self,
+                 hf_model, adapter_path, model_class, **kwargs):
+        super().__init__(**kwargs)
+        import transformers
+        from transformers import AutoTokenizer, AutoModel
+        model_class = eval(model_class) if model_class else AutoModel
+        self.model = load_config(hf_model, adapter_path, model_class)
+        self.model.config.pad_token_id = 0
+        self.model.config.bos_token_id = 1
+        self.model.config.eos_token_id = 2
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            hf_model,
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+            token=os.environ.get("HF_ACCESS_TOKEN"),
+            trust_remote_code=True
+        )
+        self.tokenizer.pad_token_id = 0 
+        self.tokenizer.padding_side = "left"
+    
+    def generate(self, input_text, max_length=128):
+        import torch
+        from transformers import LogitsProcessor, LogitsProcessorList
+        class MyLogitsProcessor(LogitsProcessor):
+
+            def __init__(self, outer, prompt_len):
+                from synchromesh import LarkCompletionEngine, StreamingCSD
+                self.outer = outer
+                self.prompt_len = prompt_len
+                vocab = [v for k, v in
+                        sorted([(t_id, self.outer.tokenizer.decode([t_id]))
+                                for _, t_id in self.outer.tokenizer.get_vocab().items()])]
+
+                # HACK: Is there a better way to know if a token has a prefix space?
+                # We should only need this for LlamaTokenizer
+                # (as it's the most popular SentencePiece derivative right now - others would need this too).
+                for i in range(len(vocab)):
+                    t = vocab[i]
+                    if 2 * len(t) != len(self.outer.tokenizer.decode([i, i], add_special_tokens=False)):
+                        vocab[i] = ' ' + t
+                    if t == '':
+                        vocab[i] = ' '
+
+                completion_engine = LarkCompletionEngine(open("grammar.lark").read(), 'begin', False)
+                self.constraint_stream = StreamingCSD(completion_engine, vocab, False)
+
+            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+                if input_ids.shape[-1] > self.prompt_len:
+                    self.constraint_stream.feed_prediction(input_ids[0][-1])
+
+                next_token = torch.argmax(scores, dim=-1)
+
+                if next_token == self.outer.tokenizer.eos_token_id:
+                    return scores
+                    
+                if self.constraint_stream.can_token_follow(next_token) or next_token in [29871]:
+                    return scores
+
+                current_str = self.outer.tokenizer.decode(input_ids[0][self.prompt_len:], skip_special_tokens=False)
+                print(f'"{current_str}" + "{self.outer.tokenizer.decode(next_token)}"', next_token, "|", self.constraint_stream.get_current_prediction())
+                
+                valid_tokens = self.constraint_stream.get_valid_tokens()
+                if not valid_tokens:
+                    return scores
+                
+                print("------")
+                valid_tokens_mask = torch.zeros(scores.shape[-1], dtype=torch.bool)
+                valid_tokens_mask[valid_tokens] = True
+                # if None in valid_tokens_set:
+                #     valid_tokens_set.remove(None)
+                scores[0][~valid_tokens_mask] = float('-inf')
+
+                next_token = torch.argmax(scores, dim=-1)
+                next_str = self.outer.tokenizer.decode(torch.cat([input_ids[0][self.prompt_len:], next_token], dim=-1), skip_special_tokens=False)
+                print(next_str)
+                print("******")
+
+                return scores
+        input_ids = self.tokenizer.encode(input_text, return_tensors="pt", add_special_tokens=False).to("cuda")
+        output = self.model.generate(
+            input_ids,
+            pad_token_id=self.tokenizer.eos_token_id,
+            max_new_tokens=128,
+            logits_processor=LogitsProcessorList([MyLogitsProcessor(self, input_ids.shape[-1])])
+        )
+        output = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        # print(output)
         return output

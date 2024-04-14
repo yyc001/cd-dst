@@ -66,7 +66,7 @@ def inference(
         # evaluate_process(data_path, output_file, False, **kwargs)
         json.dump(predicted, open(output_file, "w"), indent=2)
 
-    evaluate_process(data_path, output_file, False)
+    evaluate_process(data_path, output_file, True)
 
 
 def evaluate_process(data_path, output_file, reparse, **kwargs):

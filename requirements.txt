@@ -1,0 +1,10 @@
+torch
+transformers
+python-dotenv
+openai
+accelerate
+bitsandbytes
+datasets
+peft
+trl
+SentencePiece

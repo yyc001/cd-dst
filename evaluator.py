@@ -28,7 +28,7 @@ class Evaluator:
                 # print("#############", dialogue[i]["active_state"], predicted[index][i]["active_state"], dialogue[i]["state"])
 
                 context += " " + dialogue[i]["system_utterance"] + " " + dialogue[i]["user_utterance"]
-                result = self.compare_state(dialogue[i]["state"], predicted[index][i]["state"], context)
+                result = self.compare_state(dialogue[i]["active_state"], predicted[index][i]["active_state"], context)
                 correct_turn_num += result["correct_turn_num"]
                 correct_sv_num += result["correct_sv_num"]
                 correct_svb_num += result["correct_svb_num"]
