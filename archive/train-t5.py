@@ -7,7 +7,7 @@ import torch
 # import numpy as np
 from datasets import Dataset
 from dotenv import load_dotenv
-from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_int8_training
+from peft import LoraConfig, get_peft_model, TaskType
 from transformers import T5Tokenizer, DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM
 from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer
 # import sentencepiece
@@ -25,8 +25,8 @@ tokenizer = T5Tokenizer.from_pretrained(
 model = AutoModelForSeq2SeqLM.from_pretrained(
     MODEL_NAME,
     cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
-    torch_dtype=torch.float16,
-    load_in_8bit=True,
+    torch_dtype=torch.bfloat16,
+    # load_in_8bit=True,
     device_map="auto"
 )
 # Define LoRA Config
@@ -39,7 +39,7 @@ lora_config = LoraConfig(
  task_type=TaskType.SEQ_2_SEQ_LM
 )
 # prepare int-8 model for training
-model = prepare_model_for_int8_training(model)
+# model = prepare_model_for_int8_training(model)
 
 # add LoRA adaptor
 model = get_peft_model(model, lora_config)
@@ -65,9 +65,9 @@ def data_process(data_path):
             else:
                 output = "No column informed"
             text = '''Contexts: {input_context}
-    Dialogue:
-    {input_utterance}
-    Please write the lists: (Don't write anything other than the lists themselves)'''.format(
+Dialogue:
+{input_utterance}
+Please write the lists: (Don't write anything other than the lists themselves)'''.format(
                 input_context=context,
                 input_utterance=f"sys: {turn['system_utterance']} \n usr: {turn['user_utterance']}"
             )

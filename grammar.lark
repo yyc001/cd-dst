@@ -1,4 +1,4 @@
-start: "<s> " begin
+start: " " begin
 begin: "User informed " /[0-9]/+ " column" "s"? ": " states | "No column informed"
 
 states: state ("; " state)*

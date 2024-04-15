@@ -1,0 +1,6 @@
+{
+    "name": "SCDModel",
+    "hf_model": "google/flan-t5-xxl",
+    "adapter_path": "checkpoints/flan-t5-xxl",
+    "model_class": "transformers.T5ForConditionalGeneration"
+}

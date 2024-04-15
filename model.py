@@ -250,11 +250,11 @@ class T5AdapterModel(InferenceModel):
         from peft import PeftModel
         model = T5ForConditionalGeneration.from_pretrained(
             hf_model,
-            cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE"),
             # load_in_4bit=True,
-            torch_dtype=torch.float16,
+            torch_dtype=torch.bfloat16,
             device_map='auto',
-            load_in_8bit=True,
+            # load_in_8bit=True,
         )
         self.model = PeftModel.from_pretrained(
             model,
@@ -264,7 +264,7 @@ class T5AdapterModel(InferenceModel):
         self.model.eval()
         self.tokenizer = T5Tokenizer.from_pretrained(
             hf_model,
-            cache_dir=os.environ.get("TRANSFORMERS_CACHE")
+            # cache_dir=os.environ.get("TRANSFORMERS_CACHE")
         )
 
     def generate(self, input_text):
@@ -278,7 +278,7 @@ class T5AdapterModel(InferenceModel):
             input_ids=input_ids,
             max_new_tokens=128,
         )
-        output = self.tokenizer.decode(outputs[0][1:-1])
+        output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return output
 
 
@@ -489,6 +489,7 @@ class SCDModel(InferenceModel):
                 # HACK: Is there a better way to know if a token has a prefix space?
                 # We should only need this for LlamaTokenizer
                 # (as it's the most popular SentencePiece derivative right now - others would need this too).
+                # if 'Llama' in self.outer.tokenizer.__class__.__name__:
                 for i in range(len(vocab)):
                     t = vocab[i]
                     if 2 * len(t) != len(self.outer.tokenizer.decode([i, i], add_special_tokens=False)):
@@ -496,19 +497,24 @@ class SCDModel(InferenceModel):
                     if t == '':
                         vocab[i] = ' '
 
-                completion_engine = LarkCompletionEngine(open("grammar.lark").read(), 'begin', False)
+                completion_engine = LarkCompletionEngine(open("grammar.lark").read(), 'start' if self.outer.model.config.is_encoder_decoder else 'begin', False)
                 self.constraint_stream = StreamingCSD(completion_engine, vocab, False)
 
             def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+                # current_str = self.outer.tokenizer.decode(input_ids[0])
+                # print(current_str, "**********")
                 if input_ids.shape[-1] > self.prompt_len:
                     self.constraint_stream.feed_prediction(input_ids[0][-1])
 
                 next_token = torch.argmax(scores, dim=-1)
 
-                if next_token == self.outer.tokenizer.eos_token_id:
+                # if input_ids.shape[-1] == 1 and next_token in [6674, 465]:
+                #     return scores
+
+                if next_token in [self.outer.tokenizer.eos_token_id, self.outer.tokenizer.bos_token_id, 29871]:
                     return scores
                     
-                if self.constraint_stream.can_token_follow(next_token) or next_token in [29871]:
+                if self.constraint_stream.can_token_follow(next_token):
                     return scores
 
                 current_str = self.outer.tokenizer.decode(input_ids[0][self.prompt_len:], skip_special_tokens=False)
@@ -516,6 +522,8 @@ class SCDModel(InferenceModel):
                 
                 valid_tokens = self.constraint_stream.get_valid_tokens()
                 if not valid_tokens:
+                                        # print("EOS")
+                    # scores[0][self.outer.tokenizer.eos_token_id] = 1
                     return scores
                 
                 print("------")
@@ -533,10 +541,10 @@ class SCDModel(InferenceModel):
                 return scores
         input_ids = self.tokenizer.encode(input_text, return_tensors="pt", add_special_tokens=False).to("cuda")
         output = self.model.generate(
-            input_ids,
+            input_ids=input_ids,
             pad_token_id=self.tokenizer.eos_token_id,
             max_new_tokens=128,
-            logits_processor=LogitsProcessorList([MyLogitsProcessor(self, input_ids.shape[-1])])
+            logits_processor=LogitsProcessorList([MyLogitsProcessor(self, 1 if self.model.config.is_encoder_decoder else input_ids.shape[-1])])
         )
         output = self.tokenizer.decode(output[0], skip_special_tokens=True)
         # print(output)
